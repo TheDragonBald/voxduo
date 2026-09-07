@@ -17,7 +17,7 @@ dist/
 
 # Рабочие документы — локальные, в репозиторий не идут
 PLAN.md
-plan_calibration.md
+PLAN_CALIBRATION.md
 
 # Личные эталонные записи для замера качества
 samples/*
