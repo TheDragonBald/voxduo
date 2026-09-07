@@ -125,8 +125,11 @@ def synthesize_with_fallback(
 
         warning = None
         if index > 0:
-            # Первым в order всегда идёт выбранный движок
-            warning = f"{engines[order[0]].title} недоступен, озвучено через {engine.title}"
+            # Первым в order всегда идёт выбранный пользователем движок, но в
+            # реестре его может не быть вовсе — например, пакет не установлен
+            preferred = engines.get(order[0])
+            preferred_title = preferred.title if preferred is not None else order[0]
+            warning = f"{preferred_title} недоступен, озвучено через {engine.title}"
         return SynthesisOutcome(path=path, engine=name, voice=voice, warning=warning)
 
     if not attempted:
