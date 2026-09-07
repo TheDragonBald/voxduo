@@ -1,0 +1,15 @@
+# Единые окончания строк: LF в репозитории, CRLF в рабочей копии Windows
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+*.ps1 text eol=crlf
+LICENSE text eol=lf
+
+# Бинарные файлы не трогать
+*.png binary
+*.ico binary
+*.wav binary
+*.mp3 binary
+*.onnx binary

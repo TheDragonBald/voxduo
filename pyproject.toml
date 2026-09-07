@@ -1,0 +1,25 @@
+[project]
+name = "voxduo"
+version = "0.1.0"
+description = "Распознавание и синтез речи на русском языке для Windows"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501",  # длину строк держим глазами, а не линтером: в русских комментариях
+             # перенос по 100 символам режет фразы в неудобных местах
+]
+
+[tool.ruff.lint.per-file-ignores]
+"legacy/*" = ["ALL"]  # исходный скрипт хранится как есть, для истории

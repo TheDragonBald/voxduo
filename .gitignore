@@ -1,0 +1,33 @@
+# Виртуальное окружение
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Сборка PyInstaller
+build/
+dist/
+
+# Рабочий план — локальный документ, в репозиторий не идёт
+PLAN.md
+
+# Личные эталонные записи для замера качества
+samples/*
+!samples/.gitkeep
+
+# Временные файлы старой версии
+temp_audio.wav
+
+# Ярлыки Windows
+*.lnk
+
+# Локальные данные приложения (обычно в %LOCALAPPDATA%, но на всякий случай)
+logs/
+models/
