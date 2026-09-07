@@ -1,0 +1,110 @@
+.root {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.title {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 4px 0 28px;
+  color: var(--muted);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+}
+
+.button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
+.ok {
+  margin: 14px 0 0;
+  color: var(--accent);
+}
+
+.error {
+  margin: 14px 0 0;
+  color: var(--danger);
+}
+
+.state {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+
+  &[data-state="open"] {
+    color: var(--accent);
+  }
+
+  &[data-state="closed"] {
+    color: var(--danger);
+  }
+}
+
+.counter {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+// Результат появляется с анимацией: без неё изменение текста проходит мимо
+// взгляда, и кажется, что нажатие не сработало
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ok,
+.error {
+  animation: appear 0.2s ease-out;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

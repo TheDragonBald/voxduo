@@ -1,0 +1,35 @@
+// Глобальные стили и токены. В настоящем проекте это уедет в shared/styles,
+// здесь достаточно проверить, что SCSS вообще собирается.
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1a1c1e;
+  --muted: #6b7280;
+  --accent: #2e9e57;
+  --danger: #c03a3a;
+  --border: #e3e5e8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1c1e;
+    --surface: #26282b;
+    --text: #eceff1;
+    --muted: #9aa3af;
+    --accent: #3ab06a;
+    --danger: #e05757;
+    --border: #35383c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
