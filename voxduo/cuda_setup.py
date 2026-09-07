@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 # меняется от версии к версии.
 
 _registered = False
+_registered_dirs: list[Path] = []
 
 
 def _nvidia_roots() -> list[Path]:
@@ -67,7 +68,7 @@ def register_cuda_dlls() -> list[Path]:
     """
     global _registered
     if _registered or sys.platform != "win32":
-        return []
+        return list(_registered_dirs)
 
     added: list[Path] = []
     for root in _nvidia_roots():
@@ -90,6 +91,7 @@ def register_cuda_dlls() -> list[Path]:
                 log.debug("Зарегистрирован путь к CUDA DLL: %s", candidate)
 
     _registered = True
+    _registered_dirs.extend(added)
     if added:
         log.info("Подключено каталогов с CUDA-библиотеками: %d", len(added))
     else:
@@ -112,6 +114,17 @@ def cuda_device_count() -> int:
         return 0
 
 
+def _frozen_without_cuda_libs() -> bool:
+    """Собранный .exe без библиотек NVIDIA рядом.
+
+    CTranslate2 умеет опросить драйвер и сообщить о видеокарте, даже когда
+    cuBLAS и cuDNN отсутствуют, — но посчитать на ней уже не сможет.
+    """
+    if not getattr(sys, "frozen", False):
+        return False
+    return not _registered_dirs
+
+
 def resolve_device(preference: str = "auto") -> tuple[str, str]:
     """Возвращает пару (device, compute_type) для faster-whisper.
 
@@ -126,12 +139,19 @@ def resolve_device(preference: str = "auto") -> tuple[str, str]:
     count = cuda_device_count()
 
     if preference == "cuda":
-        if count == 0:
+        if count == 0 or _frozen_without_cuda_libs():
             log.warning("Запрошен GPU, но CUDA недоступна — переключаемся на процессор")
             return "cpu", "int8"
         return "cuda", "float16"
 
     if count > 0:
+        if _frozen_without_cuda_libs():
+            # Драйвер видит карту, но библиотек рядом нет: в собранный .exe
+            # они не кладутся, они проприетарные и весят около гигабайта.
+            # Без этой проверки приложение обещало бы GPU и падало бы уже
+            # в середине распознавания, с невнятным сообщением про DLL.
+            log.info("Сборка без библиотек CUDA — работаем на процессоре")
+            return "cpu", "int8"
         log.info("Обнаружено устройств CUDA: %d — используем GPU", count)
         return "cuda", "float16"
 
