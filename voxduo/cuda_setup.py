@@ -6,10 +6,15 @@ nvidia-cudnn-cu12 кладут их внутрь site-packages, куда Windows
 при поиске библиотек. Итог — знаменитое «Could not locate cudnn_ops64_9.dll»
 при исправно работающей видеокарте.
 
-Начиная с Python 3.8 путь к DLL нужно регистрировать явно через
-os.add_dll_directory, и сделать это надо ДО первого импорта faster_whisper.
-Поэтому register_cuda_dlls() вызывается на старте приложения, а не внутри
-модуля распознавания.
+Одного os.add_dll_directory здесь мало, и это выясняется не сразу.
+Он действует только на загрузку через механизм Python, а CTranslate2 тянет
+cublas64_12.dll изнутри своей нативной библиотеки обычным LoadLibrary,
+который смотрит на PATH процесса. Поэтому каталоги добавляются и туда, и
+туда: без add_dll_directory не найдётся cuDNN, без PATH — cuBLAS.
+
+Сделать это надо ДО первого импорта faster_whisper, поэтому
+register_cuda_dlls() вызывается на старте приложения, а не внутри модуля
+распознавания.
 """
 
 from __future__ import annotations
@@ -22,8 +27,9 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-# Подпапки пакета nvidia, где лежат нужные библиотеки
-_CUDA_PACKAGES = ("cudnn", "cublas")
+# Подпапки внутри пакета nvidia перебираем целиком: помимо cudnn и cublas
+# ctranslate2 может потянуть, например, cuda_nvrtc, а состав пакетов
+# меняется от версии к версии.
 
 _registered = False
 
@@ -39,6 +45,19 @@ def _nvidia_roots() -> list[Path]:
     return [Path(p) for p in spec.submodule_search_locations]
 
 
+def _prepend_to_path(directory: Path) -> None:
+    """Добавляет каталог в начало PATH процесса.
+
+    Нужно именно это, а не только add_dll_directory: нативный загрузчик
+    внутри CTranslate2 ищет зависимости по PATH.
+    """
+    current = os.environ.get("PATH", "")
+    entry = str(directory)
+    if entry in current.split(os.pathsep):
+        return
+    os.environ["PATH"] = entry + os.pathsep + current
+
+
 def register_cuda_dlls() -> list[Path]:
     """Регистрирует каталоги с CUDA-библиотеками. Возвращает добавленные пути.
 
@@ -52,16 +71,21 @@ def register_cuda_dlls() -> list[Path]:
 
     added: list[Path] = []
     for root in _nvidia_roots():
-        for package in _CUDA_PACKAGES:
+        if not root.is_dir():
+            continue
+        for package in sorted(root.iterdir()):
+            if not package.is_dir():
+                continue
             # У разных версий пакетов библиотеки лежат либо в bin, либо в bin/x64
-            for candidate in (root / package / "bin", root / package / "bin" / "x64"):
-                if not candidate.is_dir():
+            for candidate in (package / "bin", package / "bin" / "x64"):
+                if not candidate.is_dir() or not any(candidate.glob("*.dll")):
                     continue
                 try:
                     os.add_dll_directory(str(candidate))
                 except OSError as exc:
                     log.warning("Не удалось добавить путь к DLL %s: %s", candidate, exc)
                     continue
+                _prepend_to_path(candidate)
                 added.append(candidate)
                 log.debug("Зарегистрирован путь к CUDA DLL: %s", candidate)
 
