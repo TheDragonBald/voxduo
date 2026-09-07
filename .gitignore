@@ -37,3 +37,7 @@ models/
 node_modules/
 *.tsbuildinfo
 .vite/
+
+# Личные настройки Claude Code и снимок состояния сессии
+.claude/settings.local.json
+.claude/session-state.md
