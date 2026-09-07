@@ -32,3 +32,8 @@ temp_audio.wav
 # Локальные данные приложения (обычно в %LOCALAPPDATA%, но на всякий случай)
 logs/
 models/
+
+# Фронтенд
+node_modules/
+*.tsbuildinfo
+.vite/
