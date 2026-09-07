@@ -1,0 +1,71 @@
+name: build
+
+# Сборка voxduo.exe для тех, у кого нет Python.
+#
+# Запускается по тегу вида v0.1.0 и прикладывает архив к релизу. Вручную
+# запустить тоже можно — кнопкой Run workflow, чтобы проверить сборку
+# до выпуска версии.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Установка зависимостей
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Линтер и тесты
+        run: |
+          python -m ruff check .
+          python -m pytest
+
+      - name: Сборка
+        run: python -m PyInstaller voxduo.spec --noconfirm
+
+      - name: Проверка, что бинарник запускается
+        # --check печатает сводку об окружении и выходит: если сборка
+        # потеряла зависимость, это видно сразу, а не у пользователя
+        run: dist\voxduo\voxduo.exe --check
+        shell: cmd
+
+      - name: Упаковка
+        run: Compress-Archive -Path dist\voxduo\* -DestinationPath voxduo-windows-x64.zip
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voxduo-windows-x64
+          path: voxduo-windows-x64.zip
+          retention-days: 14
+
+      - name: Публикация релиза
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: voxduo-windows-x64.zip
+          body: |
+            Сборка для Windows x64. Python устанавливать не нужно.
+
+            Распознавание в этой сборке работает на процессоре: библиотеки
+            CUDA проприетарные и в бинарник не входят. Нужна видеокарта —
+            ставьте из исходников, см. README.
+
+            Модели скачиваются при первом запуске, около 1.6–3 ГБ.

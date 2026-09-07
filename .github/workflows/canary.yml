@@ -1,0 +1,77 @@
+name: canary
+
+# Ранний детектор поломки edge-tts.
+#
+# Microsoft периодически меняет требования к версии клиента, и edge-tts
+# начинает получать 403, пока не выйдет обновление пакета. Раз в неделю
+# синтезируем короткую фразу: если не вышло — заводится issue, и мы узнаём
+# об этом раньше, чем кто-то столкнётся при использовании.
+#
+# Проверка стоит секунды и не трогает ничего, кроме сети.
+
+on:
+  schedule:
+    # Понедельник, 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Установка edge-tts
+        run: python -m pip install -r requirements.txt
+
+      - name: Проверка синтеза
+        id: probe
+        run: python scripts/check_edge.py
+
+      - name: Завести issue, если синтез сломался
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = 'edge-tts перестал отвечать';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'edge-tts',
+            });
+            if (existing.data.some(issue => issue.title === title)) {
+              core.info('Issue уже заведён, второй не нужен');
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['edge-tts'],
+              body: [
+                'Еженедельная проверка синтеза через edge-tts не прошла.',
+                '',
+                `Журнал запуска: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                'Что обычно помогает, по порядку:',
+                '',
+                '1. Обновить пакет: `pip install -U edge-tts`.',
+                '2. Если обновления ещё нет — указать текущую версию Edge',
+                '   в настройках приложения (её видно на `edge://settings/help`).',
+                '3. Проверить, не разошлись ли часы: edge-tts подписывает запросы',
+                '   временем, округлённым до пяти минут.',
+                '',
+                'Пользователей это не блокирует: синтез автоматически',
+                'переключается на Silero или Piper.',
+              ].join('\n'),
+            });
