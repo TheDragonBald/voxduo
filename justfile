@@ -4,6 +4,13 @@
 # Всё идёт через .venv, а не через python из PATH: в PATH здесь Python 3.14
 # без пакетов, и запуск оттуда падает с невнятной ошибкой импорта.
 
+# just на Windows по умолчанию ищет оболочку sh. Она в системе есть —
+# C:\Program Files\Git\usr\bin\sh.exe, — но Git намеренно не добавляет этот
+# каталог в PATH, чтобы юниксовые утилиты не перекрывали команды Windows.
+# Поэтому из PowerShell just падал с «could not find the shell `sh`».
+# PowerShell есть на любой Windows и не требует ничего доустанавливать.
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+
 python := ".venv/Scripts/python.exe"
 
 # Показать список команд
@@ -85,9 +92,14 @@ build:
 
 # Открыть папку с логами
 logs:
-    explorer.exe "$LOCALAPPDATA/VoxDuo/logs"
+    explorer.exe "$env:LOCALAPPDATA\VoxDuo\logs"
 
 # Убрать временные файлы сборки и кэши
+#
+# Проверяем существование перед удалением, а не глушим ошибки через
+# -ErrorAction SilentlyContinue: тот прячет сообщение, но рецепт всё равно
+# завершается с кодом 1, и следующая строка не выполняется.
+# Кэши ищем только в своих папках — внутри .venv их под тысячу.
 clean:
-    -rm -rf build dist .pytest_cache .ruff_cache htmlcov .coverage
-    -find . -type d -name __pycache__ -exec rm -rf {} +
+    foreach ($p in 'build','dist','.pytest_cache','.ruff_cache','htmlcov','.coverage') { if (Test-Path $p) { Remove-Item -Recurse -Force $p } }
+    foreach ($d in 'voxduo','tests','scripts') { if (Test-Path $d) { Get-ChildItem $d -Recurse -Directory -Filter __pycache__ | ForEach-Object { Remove-Item -Recurse -Force $_.FullName } } }
