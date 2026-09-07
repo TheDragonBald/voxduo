@@ -54,12 +54,12 @@ DEFAULT_REPLACEMENTS: dict[str, str] = {
 class SttConfig:
     """Распознавание речи."""
 
-    model: str = "large-v3"          # large-v3 | large-v3-turbo
-    language: str = "ru"             # ru | en | auto
-    device: str = "auto"             # auto | cuda | cpu
+    model: str = "large-v3"  # large-v3 | large-v3-turbo
+    language: str = "ru"  # ru | en | auto
+    device: str = "auto"  # auto | cuda | cpu
     initial_prompt: str = DEFAULT_INITIAL_PROMPT
-    beam_size: int = 5               # 1 = жадный поиск; 5 заметно ровнее пунктуация
-    vad_filter: bool = True          # режет тишину, убирает галлюцинации
+    beam_size: int = 5  # 1 = жадный поиск; 5 заметно ровнее пунктуация
+    vad_filter: bool = True  # режет тишину, убирает галлюцинации
     vad_min_silence_ms: int = 500
     input_device: str | None = None  # None = устройство по умолчанию
 
@@ -69,18 +69,16 @@ class TtsConfig:
     """Синтез речи."""
 
     engine: str = "edge"
-    fallback_order: list[str] = field(
-        default_factory=lambda: ["edge", "silero", "piper"]
-    )
+    fallback_order: list[str] = field(default_factory=lambda: ["edge", "silero", "piper"])
     voices: dict[str, str] = field(
         default_factory=lambda: {
             "edge": "ru-RU-SvetlanaNeural",
-            "silero": "",                     # заполнится первым голосом модели
-            "piper": "ru_RU-denis-medium",    # CC0
+            "silero": "",  # заполнится первым голосом модели
+            "piper": "ru_RU-denis-medium",  # CC0
         }
     )
-    rate: int = 0    # проценты к скорости: -50..+100
-    pitch: int = 0   # герцы к высоте тона
+    rate: int = 0  # проценты к скорости: -50..+100
+    pitch: int = 0  # герцы к высоте тона
     # Пусто = использовать версию, зашитую в edge-tts. Ручное значение
     # позволяет починить 403 при ротации токена, не дожидаясь релиза пакета.
     edge_chromium_version: str = ""
@@ -91,13 +89,11 @@ class AppConfig:
     """Корень конфигурации."""
 
     schema_version: int = SCHEMA_VERSION
-    theme: str = "system"   # system | light | dark
-    mode: str = "stt"       # какой режим открыть при старте
+    theme: str = "system"  # system | light | dark
+    mode: str = "stt"  # какой режим открыть при старте
     stt: SttConfig = field(default_factory=SttConfig)
     tts: TtsConfig = field(default_factory=TtsConfig)
-    replacements: dict[str, str] = field(
-        default_factory=lambda: dict(DEFAULT_REPLACEMENTS)
-    )
+    replacements: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_REPLACEMENTS))
 
     def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)

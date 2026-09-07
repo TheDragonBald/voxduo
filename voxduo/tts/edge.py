@@ -100,7 +100,9 @@ def _classify(exc: Exception) -> TtsError:
         )
 
     lowered = text.lower()
-    if any(marker in lowered for marker in ("getaddrinfo", "network", "connect", "temporary failure")):
+    if any(
+        marker in lowered for marker in ("getaddrinfo", "network", "connect", "temporary failure")
+    ):
         return TtsUnavailable("нет подключения к интернету")
     if "timeout" in lowered or "timed out" in lowered:
         return TtsUnavailable("сервер не ответил вовремя")

@@ -61,8 +61,7 @@ class TtsEngine(Protocol):
         """Можно ли пользоваться движком прямо сейчас (без обращения к сети)."""
         ...
 
-    def list_voices(self) -> list[Voice]:
-        ...
+    def list_voices(self) -> list[Voice]: ...
 
     def synthesize(self, text: str, voice: str, rate: int, pitch: int, out_path: Path) -> Path:
         """Синтезирует речь в файл и возвращает путь к нему."""

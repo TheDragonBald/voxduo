@@ -93,7 +93,9 @@ class SileroTts:
         try:
             import torch
         except ImportError as exc:
-            raise TtsUnavailable("torch не установлен: pip install -r requirements-silero.txt") from exc
+            raise TtsUnavailable(
+                "torch не установлен: pip install -r requirements-silero.txt"
+            ) from exc
 
         path.parent.mkdir(parents=True, exist_ok=True)
         log.info("Скачиваем модель Silero %s", MODEL_ID)

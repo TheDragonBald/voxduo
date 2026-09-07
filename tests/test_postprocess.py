@@ -12,6 +12,7 @@ from voxduo.stt import postprocess as pp
 
 # --- словарь замен ---
 
+
 def test_replacement_basic():
     assert pp.apply_replacements("пишу на джаваскрипт", {"джаваскрипт": "JavaScript"}) == (
         "пишу на JavaScript"
@@ -50,6 +51,7 @@ def test_replacement_with_regex_special_chars():
 
 # --- галлюцинации ---
 
+
 @pytest.mark.parametrize(
     "line",
     [
@@ -83,6 +85,7 @@ def test_strip_hallucinations_empty():
 
 # --- нормализация ---
 
+
 def test_space_before_punctuation_removed():
     assert pp.normalize_whitespace("привет , мир !") == "Привет, мир!"
 
@@ -111,6 +114,7 @@ def test_normalize_empty():
 
 
 # --- всё вместе ---
+
 
 def test_full_pipeline():
     raw = "  джаваскрипт  упал  на  линтере , надо чинить\nПродолжение следует...  "
