@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import sounddevice as sd
@@ -100,7 +101,7 @@ class Recorder:
         """Громкость последнего блока, 0.0–1.0. Для индикатора в интерфейсе."""
         return self._level
 
-    def _callback(self, indata: np.ndarray, frames: int, time_info, status) -> None:
+    def _callback(self, indata: np.ndarray, frames: int, time_info: Any, status: Any) -> None:
         if status:
             # Переполнение буфера при загруженной системе — не повод падать,
             # но знать об этом полезно

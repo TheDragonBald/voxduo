@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
+from typing import Any
 
 from .base import TtsError, TtsUnavailable, Voice
 
@@ -73,7 +74,8 @@ class SileroTts:
     title = "Silero"
 
     def __init__(self) -> None:
-        self._model = None
+        # Модель Silero приходит из torch.hub — типа у неё нет
+        self._model: Any = None
         self._speakers: list[str] = []
         self._lock = threading.Lock()
 
@@ -108,13 +110,17 @@ class SileroTts:
             raise TtsUnavailable(f"не удалось скачать модель Silero: {exc}") from exc
         return path
 
-    def _load(self):
-        if self._model is not None:
-            return self._model
+    def _load(self) -> Any:
+        # Атрибут читается в локальную переменную, а не проверяется дважды:
+        # между `is not None` и `return` другой поток мог бы его сменить.
+        model = self._model
+        if model is not None:
+            return model
 
         with self._lock:
-            if self._model is not None:
-                return self._model
+            model = self._model
+            if model is not None:
+                return model
 
             try:
                 import torch

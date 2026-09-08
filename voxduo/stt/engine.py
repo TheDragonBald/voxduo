@@ -21,6 +21,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -76,7 +77,8 @@ class SttEngine:
 
     def __init__(self, config: SttConfig) -> None:
         self._config = config
-        self._model = None
+        # WhisperModel: faster_whisper без аннотаций, поэтому Any
+        self._model: Any = None
         self._loaded_key: tuple[str, str, str] | None = None
         self._device = "cpu"
         self._compute_type = "int8"

@@ -17,6 +17,11 @@ import logging.handlers
 import sys
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Нужен только для аннотации обработчика исключений
+    from types import TracebackType
 
 from . import __version__, paths
 
@@ -83,7 +88,11 @@ def _install_excepthooks() -> None:
     """Направляет необработанные исключения в лог — из главного потока и фоновых."""
     log = logging.getLogger("voxduo.unhandled")
 
-    def handle_exception(exc_type, exc_value, exc_tb):
+    def handle_exception(
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_tb: TracebackType | None,
+    ) -> None:
         # Ctrl+C оставляем стандартному обработчику
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_tb)
@@ -93,10 +102,13 @@ def _install_excepthooks() -> None:
     def handle_thread_exception(args: threading.ExceptHookArgs) -> None:
         if issubclass(args.exc_type, SystemExit):
             return
+        # exc_value объявлен как BaseException | None, а exc_info кортеж с
+        # None внутри не принимает. Передаём само исключение — logging умеет и так.
+        exc = args.exc_value
         log.critical(
             "Необработанное исключение в потоке %s",
             args.thread.name if args.thread else "?",
-            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+            exc_info=exc if exc is not None else False,
         )
 
     sys.excepthook = handle_exception

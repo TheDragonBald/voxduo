@@ -161,9 +161,11 @@ def load(path: Path | None = None) -> AppConfig:
     except Exception as exc:
         # Отложить битый файл важнее, чем сохранить его: иначе следующая
         # запись затрёт единственную улику.
-        backup = path.with_suffix(".json.broken")
+        target = path.with_suffix(".json.broken")
+        backup: Path | None
         try:
-            shutil.copy2(path, backup)
+            shutil.copy2(path, target)
+            backup = target
         except OSError:
             backup = None
         log.error("Конфиг повреждён (%s), стартуем с дефолтами. Копия: %s", exc, backup)

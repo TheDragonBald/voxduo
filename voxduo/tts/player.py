@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -30,10 +31,10 @@ def _read_with_av(path: Path) -> tuple[np.ndarray, int]:
         raise PlaybackError("нечем декодировать: нет ни libsndfile с MP3, ни av") from exc
 
     with av.open(str(path)) as container:
-        stream = next((s for s in container.streams if s.type == "audio"), None)
+        stream = next(iter(container.streams.audio), None)
         if stream is None:
             raise PlaybackError("в файле нет звуковой дорожки")
-        sample_rate = stream.codec_context.sample_rate
+        sample_rate = stream.sample_rate
         chunks = [frame.to_ndarray().reshape(-1) for frame in container.decode(stream)]
 
     if not chunks:
@@ -62,13 +63,13 @@ class Player:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._playing = False
-        self._on_finish = None
+        self._on_finish: Callable[[], None] | None = None
 
     @property
     def is_playing(self) -> bool:
         return self._playing
 
-    def play(self, path: Path, on_finish=None) -> None:
+    def play(self, path: Path, on_finish: Callable[[], None] | None = None) -> None:
         """Начинает воспроизведение, не блокируя вызывающий поток."""
         path = Path(path)
         if not path.exists():

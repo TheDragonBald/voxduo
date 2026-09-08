@@ -59,7 +59,7 @@ def apply(mode: str) -> None:
 
 def current_is_dark() -> bool:
     """Тёмная ли тема сейчас — нужно там, где цвет считается вручную."""
-    return ctk.get_appearance_mode().lower() == "dark"
+    return bool(ctk.get_appearance_mode().lower() == "dark")
 
 
 def pick(name: str) -> str:

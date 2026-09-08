@@ -151,9 +151,10 @@ Microsoft Edge неофициально: условий использовани
 ## Разработка
 
 ```powershell
-just install-dev # инструменты разработки: ruff, pytest, PyInstaller
+just install-dev # инструменты разработки: ruff, mypy, pytest, PyInstaller
 just --list      # все команды
-just all         # проверка лока, линтер и тесты перед коммитом
+just all         # лок, линтер, типы и тесты перед коммитом
+just types       # только проверка типов
 just smoke       # живой прогон движков синтеза
 just check       # сводка окружения
 ```

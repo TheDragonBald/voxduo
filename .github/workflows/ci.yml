@@ -84,6 +84,13 @@ jobs:
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: uv run --frozen --no-sync python -m ruff format --check .
 
+      # Аннотации есть почти везде, но до этого шага они были комментариями,
+      # которые никто не сверял с кодом. Условие то же, что у соседей: при
+      # красном линтере вердикт по типам всё равно нужен.
+      - name: Типы
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: uv run --frozen --no-sync python -m mypy
+
       - name: Тесты
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: uv run --frozen --no-sync python -m pytest

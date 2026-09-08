@@ -111,13 +111,20 @@ lint:
     {{ run }} python -m ruff check .
     {{ run }} python -m ruff format --check .
 
+# Проверить аннотации типов
+#
+# Платформа и версия Python зафиксированы в [tool.mypy], поэтому результат
+# здесь и в CI одинаков. Проверено: с экстрой silero и без неё счёт совпадает.
+types:
+    {{ run }} python -m mypy
+
 # Отформатировать и починить, что чинится автоматически
 fmt:
     {{ run }} python -m ruff format .
     {{ run }} python -m ruff check --fix .
 
 # Всё, что стоит прогнать перед коммитом
-all: locked lint test
+all: locked lint types test
 
 # Прогон движков синтеза вживую: сеть, модели, звук
 smoke:
@@ -175,5 +182,5 @@ protect:
 # завершается с кодом 1, и следующая строка не выполняется.
 # Кэши ищем только в своих папках — внутри .venv их под тысячу.
 clean:
-    foreach ($p in 'build','dist','.pytest_cache','.ruff_cache','htmlcov','.coverage') { if (Test-Path $p) { Remove-Item -Recurse -Force $p } }
+    foreach ($p in 'build','dist','.pytest_cache','.ruff_cache','.mypy_cache','htmlcov','.coverage') { if (Test-Path $p) { Remove-Item -Recurse -Force $p } }
     foreach ($d in 'voxduo','tests','scripts') { if (Test-Path $d) { Get-ChildItem $d -Recurse -Directory -Filter __pycache__ | ForEach-Object { Remove-Item -Recurse -Force $_.FullName } } }

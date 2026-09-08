@@ -84,6 +84,10 @@ dev = [
     "pytest-cov==7.1.0",
     "ruff==0.16.6",
     "pyinstaller==6.22.2",
+    "mypy==2.3.1",
+    # Стабы вместо глушилки: у pyperclip они есть, и с ними вызовы
+    # pyperclip.copy() в интерфейсе действительно проверяются, а не молчат.
+    "types-pyperclip==1.11.0.20260508",
 ]
 
 # Индекс с CPU-сборками PyTorch. Раньше он жил строкой --index-url в
@@ -122,6 +126,64 @@ required-version = ">=0.12.10"
 # иначе `just install` стал бы равен `just install-dev`, а ключ -Dev в
 # install.ps1 перестал бы что-либо значить.
 default-groups = []
+
+[tool.mypy]
+python_version = "3.13"
+# Платформу задаём явно, а не берём у машины: приложение только под Windows,
+# и результат проверки не должен зависеть от того, где её запустили.
+platform = "win32"
+files = ["voxduo", "scripts", "launcher.py"]
+# tests/ здесь намеренно нет. При disallow_untyped_defs каждая тестовая функция
+# без `-> None` даёт ошибку, а добавление каталога упирается в конфликт имён
+# модулей (tests и scripts без __init__.py). Тесты берутся в хвосте Ф1
+# отдельной задачей, а не походя.
+#
+# legacy — исходный скрипт, хранится как есть; spike — вертикальный срез Ф0,
+# он войдёт под проверку в Ф2 вместе с переездом в backend/. Оба и так вне
+# files, так что exclude ниже — страховка на случай, если каталог добавят.
+#
+# ВАЖНО про будущий pre-push из PR 4: exclude действует только при обходе
+# каталогов. Файл, названный в командной строке, проверяется всё равно —
+# `mypy legacy/voice_to_text.py` даёт 9 ошибок. Аналога --force-exclude у ruff
+# у mypy нет, поэтому в хуке звать только `just types`, без {staged_files}.
+exclude = "^(legacy|spike|build|dist)/"
+
+# В mypy 2.x это уже умолчание. Пишем явно, чтобы обновление до 3.x не
+# поменяло поведение молча.
+local_partial_types = true
+
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+strict_equality = true
+extra_checks = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+# strict = true брать нельзя: disallow_subclassing_any даёт ошибку на каждом
+# классе, наследующем ctk.CTkFrame, а таких в интерфейсе большинство.
+
+# Пакеты без аннотаций. Список проверен по наличию py.typed, а не по памяти.
+[[tool.mypy.overrides]]
+module = [
+    "faster_whisper.*",
+    "ctranslate2.*",
+    "customtkinter.*",
+    "sounddevice.*",
+    "soundfile.*",
+]
+ignore_missing_imports = true
+
+# torch ставится только с экстрой silero, и в CI его нет — без этого ключа там
+# будет import-not-found. Проверено обоими прогонами: с пакетом и без.
+#
+# follow_imports = "skip" здесь стоял и убран: torch несёт py.typed, то есть
+# настоящие аннотации, а ключ их выбрасывал и превращал все вызовы в Any.
+# На результат он при этом не влиял ни с пакетом, ни без.
+[[tool.mypy.overrides]]
+module = ["torch.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

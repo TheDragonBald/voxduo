@@ -59,7 +59,10 @@ def set_chromium_version(version: str) -> bool:
     patched = False
     for module in (communicate, voices):
         if hasattr(module, "SEC_MS_GEC_VERSION"):
-            module.SEC_MS_GEC_VERSION = value
+            # Атрибут появляется и исчезает между версиями edge-tts, поэтому
+            # выше стоит hasattr. Для mypy он не существует вовсе; setattr
+            # тут не годится — на него ругается ruff (B010).
+            module.SEC_MS_GEC_VERSION = value  # type: ignore[attr-defined]
             patched = True
 
     if patched:

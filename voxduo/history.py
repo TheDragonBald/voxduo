@@ -227,7 +227,7 @@ class History:
                     log.warning("Не удалось удалить %s: %s", path, exc)
 
 
-def _parse_list(raw: Any, cls) -> list:
+def _parse_list(raw: Any, cls: Any) -> list[Any]:
     """Разбирает список записей, пропуская повреждённые."""
     if not isinstance(raw, list):
         return []
