@@ -113,13 +113,24 @@ if ($null -eq $uvVersion) {
 
 # --- интерпретатор ---
 # Версия берётся из .python-version, отдельной настройки не требуется.
+#
+# `uv python install` вызывается ТОЛЬКО если подходящего интерпретатора нет:
+# эта команда ставит собственную сборку безусловно и не смотрит на
+# python-preference = "system". На машине с уже установленным 3.13 она молча
+# качала бы лишние двадцать мегабайт.
 Write-Step "Проверяем Python"
-& uv python install
-if ($LASTEXITCODE -ne 0) {
-    Write-Warn "не удалось подготовить Python — см. сообщение выше"
-    exit 1
+$found = & uv python find 2>$null
+if ($LASTEXITCODE -eq 0 -and $found) {
+    Write-Ok "найден: $found"
+} else {
+    Write-Ok "подходящего нет, ставим"
+    & uv python install
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "не удалось подготовить Python — см. сообщение выше"
+        exit 1
+    }
+    Write-Ok "готово"
 }
-Write-Ok "готово"
 
 # --- видеокарта ---
 Write-Step "Проверяем видеокарту"
@@ -152,8 +163,18 @@ if ($Dev)                     { $syncArgs += @('--group', 'dev') }
 # остальное. Это правильно — окружение должно определяться командой, — но
 # забытый ключ стоил бы гигабайта скачанного молча. Поэтому сначала dry-run.
 Write-Step "Смотрим, что изменится"
-$plan = & uv @syncArgs --dry-run 2>&1
-if ($LASTEXITCODE -ne 0) {
+# uv печатает план в stderr, поэтому 2>&1 обязателен. Но Windows PowerShell 5.1
+# заворачивает каждую строку stderr нативной программы в ErrorRecord, и при
+# $ErrorActionPreference = 'Stop' первая же строка обрывает скрипт — до того,
+# как пользователь увидит предупреждение. Поэтому на время вызова возвращаем
+# 'Continue', а результат проверяем сами по $LASTEXITCODE.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$plan = & uv @syncArgs --dry-run 2>&1 | ForEach-Object { $_.ToString() }
+$planExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+
+if ($planExit -ne 0) {
     $plan | ForEach-Object { Write-Host $_ }
     Write-Warn "не удалось построить план установки"
     exit 1
@@ -165,9 +186,17 @@ if ($removals -and -not $Yes) {
     $removals | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
     Write-Warn "Набор ключей задаёт окружение целиком. Чтобы сохранить эти пакеты,"
     Write-Warn "перезапустите с нужными ключами: -Silero (Silero), -Dev (разработка)."
-    $answer = Read-Host "Продолжить? (y/N)"
-    if ($answer -ne 'y' -and $answer -ne 'Y') {
-        Write-Host "Отменено." -ForegroundColor White
+    # В неинтерактивной сессии (CI, запуск из другого скрипта) Read-Host читает
+    # EOF и падает. Отказ там честнее вопроса, на который некому ответить.
+    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+        $answer = Read-Host "Продолжить? (y/N)"
+        if ($answer -ne 'y' -and $answer -ne 'Y') {
+            Write-Host "Отменено." -ForegroundColor White
+            exit 1
+        }
+    } else {
+        Write-Warn "Консоль неинтерактивна, спросить некого. Повторите с -Yes,"
+        Write-Warn "если удаление действительно нужно."
         exit 1
     }
 } elseif (-not $removals) {
