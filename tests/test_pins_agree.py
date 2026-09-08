@@ -9,6 +9,10 @@
 проверять версию, которой нет ни у одного пользователя, то есть промолчит
 ровно тогда, когда сломано у всех.
 
+Второй такой дубль — версия Python: она названа в `.python-version`, в
+`requires-python`, в `[tool.mypy].python_version` и в `[tool.ruff].target-version`.
+Разъехавшись, они дадут проверку кода под одну версию при запуске на другой.
+
 Тест краснеет в CI при первом же расхождении.
 """
 
@@ -23,6 +27,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 CANARY = ROOT / ".github" / "workflows" / "canary.yml"
 PYPROJECT = ROOT / "pyproject.toml"
+PYTHON_VERSION = ROOT / ".python-version"
 
 # Версия внутри --with "edge-tts==X.Y.Z"
 _CANARY_PIN = re.compile(r'--with\s+"edge-tts==([^"]+)"')
@@ -89,3 +94,28 @@ def test_canary_pin_parsing(text: str, expected: str | None) -> None:
 )
 def test_declared_pin_parsing(deps: list[str], name: str, expected: str | None) -> None:
     assert declared_pin(deps, name) == expected
+
+
+def test_python_version_agrees_everywhere() -> None:
+    """Версия Python названа в четырёх местах — все должны говорить одно."""
+    declared = PYTHON_VERSION.read_text(encoding="utf-8").strip()
+    assert declared, ".python-version пуст"
+
+    config = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+
+    mypy_version = config["tool"]["mypy"]["python_version"]
+    assert mypy_version == declared, (
+        f"mypy проверяет код под Python {mypy_version}, а запускается он на {declared}"
+    )
+
+    # ruff записывает версию иначе: py313 вместо 3.13
+    ruff_target = config["tool"]["ruff"]["target-version"]
+    assert ruff_target == "py" + declared.replace(".", ""), (
+        f"ruff настроен на {ruff_target}, а Python в проекте {declared}"
+    )
+
+    requires = config["project"]["requires-python"]
+    major, minor = declared.split(".")[:2]
+    assert f">={major}.{minor}" in requires, (
+        f"requires-python = {requires} не согласуется с .python-version = {declared}"
+    )

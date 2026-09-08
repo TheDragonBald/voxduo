@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import wave
 from pathlib import Path
+from typing import Any
 
 from .base import TtsError, TtsUnavailable, Voice
 
@@ -111,7 +112,7 @@ class PiperTts:
     def list_voices(self) -> list[Voice]:
         return list(VOICES)
 
-    def _load(self, voice_id: str):
+    def _load(self, voice_id: str) -> Any:
         cached = self._voices.get(voice_id)
         if cached is not None:
             return cached

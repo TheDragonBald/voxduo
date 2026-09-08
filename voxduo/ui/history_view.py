@@ -67,7 +67,7 @@ class HistoryList(ctk.CTkFrame):
                 anchor="w",
             )
             placeholder.pack(fill="x", padx=8, pady=6)
-            self._rows.append(placeholder)  # type: ignore[arg-type]
+            self._rows.append(placeholder)
             return
 
         for entry in entries:

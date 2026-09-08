@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from voxduo.tts.base import TtsError  # noqa: E402
+from voxduo.tts.base import TtsEngine, TtsError  # noqa: E402
 from voxduo.tts.edge import EdgeTts  # noqa: E402
 from voxduo.tts.piper import PiperTts  # noqa: E402
 from voxduo.tts.silero import SileroTts  # noqa: E402
@@ -37,7 +37,7 @@ def main() -> int:
     out_dir = Path.home() / "AppData" / "Local" / "Temp" / "voxduo_smoke"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    engines = [EdgeTts(), SileroTts(), PiperTts()]
+    engines: list[TtsEngine] = [EdgeTts(), SileroTts(), PiperTts()]
     failures = 0
 
     for engine in engines:

@@ -23,8 +23,9 @@ def data_dir() -> Path:
             return Path(base) / __app_name__
         # На случай экзотической конфигурации без LOCALAPPDATA
         return Path.home() / "AppData" / "Local" / __app_name__
-    # Не основная платформа, но пусть работает предсказуемо
-    base = os.environ.get("XDG_DATA_HOME")
+    # Не основная платформа, но пусть работает предсказуемо. Для mypy этот
+    # код мёртв: platform = "win32" в конфиге. Оставлен намеренно.
+    base = os.environ.get("XDG_DATA_HOME")  # type: ignore[unreachable]
     root = Path(base) if base else Path.home() / ".local" / "share"
     return root / __app_name__
 
