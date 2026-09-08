@@ -2,9 +2,13 @@ name: build
 
 # Сборка voxduo.exe для тех, у кого нет Python.
 #
-# Запускается по тегу вида v0.1.0 и прикладывает архив к релизу. Вручную
-# запустить тоже можно — кнопкой Run workflow, чтобы проверить сборку
-# до выпуска версии.
+# Запускается по тегу вида v0.1.0 и прикладывает архив к релизу; на push в main
+# и на pull request, трогающих упаковку, — просто проверяет, что бандл всё ещё
+# собирается. Вручную запустить тоже можно кнопкой Run workflow.
+#
+# Линтер и тесты здесь не дублируются: их гоняет workflow checks на тех же
+# событиях, включая теги. Держать вторую копию значило платить двойными
+# windows-минутами за два набора проверок, которые уже начали расходиться.
 
 on:
   push:
@@ -25,8 +29,11 @@ on:
       - ".github/workflows/build.yml"
   workflow_dispatch:
 
+# По умолчанию только чтение. Право записи выдаётся точечно джобу release,
+# который запускается лишь на теге: иначе прогон на pull request исполнял бы
+# код ветки с write-токеном на руках.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,25 +53,21 @@ jobs:
           cache: pip
 
       # По одной нативной команде на шаг: код возврата шага равен
-      # $LASTEXITCODE последней команды блока, поэтому упавший линтер
-      # маскировался следующим за ним pytest, а шаг оставался зелёным.
-      # `pip install --upgrade pip` убран: setup-python и так даёт свежий pip,
-      # а второй командой в блоке он падал бы молча.
+      # $LASTEXITCODE последней команды блока, поэтому в блоке из двух вызовов
+      # падение первого оставалось незамеченным. `pip install --upgrade pip`
+      # убран: setup-python и так даёт свежий pip, а вторым вызовом в блоке он
+      # падал бы молча.
       - name: Установка зависимостей
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Линтер
-        run: python -m ruff check .
-
-      - name: Тесты
-        run: python -m pytest
 
       - name: Сборка
         run: python -m PyInstaller voxduo.spec --noconfirm
 
       - name: Проверка, что бинарник запускается
-        # --check печатает сводку об окружении и выходит: если сборка
-        # потеряла зависимость, это видно сразу, а не у пользователя
+        # --check печатает сводку об окружении и выходит. Сейчас он всегда
+        # возвращает 0, поэтому шаг ловит только полное падение бинарника, но
+        # не потерянную зависимость. Машинный вердикт — отдельная задача,
+        # issue #36.
         run: dist\voxduo\voxduo.exe --check
         shell: cmd
 
@@ -72,15 +75,31 @@ jobs:
         run: Compress-Archive -Path dist\voxduo\* -DestinationPath voxduo-windows-x64.zip
         shell: pwsh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: voxduo-windows-x64
           path: voxduo-windows-x64.zip
           retention-days: 14
 
+  release:
+    # Отдельный джоб ровно ради прав: contents: write нужен только для
+    # публикации, и достаётся он только прогонам по тегу. Раннер здесь
+    # линуксовый — выкладке архива Windows не нужен.
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: voxduo-windows-x64
+
       - name: Публикация релиза
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: voxduo-windows-x64.zip
           body: |
