@@ -21,9 +21,14 @@ on:
     # зависимостей, spec, точка входа, сам workflow. Изменения в voxduo/**
     # ловит push в main — сборка отработает сразу после сквоша, задолго до
     # того, как кто-то поставит тег.
+    #
+    # uv.lock и .python-version здесь обязательны: прямые пины живут в
+    # pyproject.toml, но обновление одних лишь транзитивных зависимостей
+    # меняет только лок — а именно такие PR и приходят от Dependabot.
     paths:
       - "pyproject.toml"
-      - "requirements*.txt"
+      - "uv.lock"
+      - ".python-version"
       - "voxduo.spec"
       - "launcher.py"
       - ".github/workflows/build.yml"
@@ -47,21 +52,36 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Порядок важен: setup-python раскладывает системный интерпретатор, а
+      # python-preference = "system" в pyproject.toml велит uv взять именно его.
+      # Собранный .exe должен делаться на том же CPython, на котором проверялся.
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
-          cache: pip
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "0.12.10"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       # По одной нативной команде на шаг: код возврата шага равен
       # $LASTEXITCODE последней команды блока, поэтому в блоке из двух вызовов
-      # падение первого оставалось незамеченным. `pip install --upgrade pip`
-      # убран: setup-python и так даёт свежий pip, а вторым вызовом в блоке он
-      # падал бы молча.
+      # падение первого оставалось незамеченным.
+      #
+      # --group dev нужен ради pyinstaller: default-groups = [] намеренно не
+      # тянет инструменты разработки в обычную установку.
       - name: Установка зависимостей
-        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+        run: uv sync --locked --group dev
+
+      # Страховка на один вывод в лог: если PyInstaller однажды соберёт бандл
+      # на managed-Python от uv вместо системного, это не упадёт, а тихо даст
+      # другой размер и состав. Здесь видно, чей это интерпретатор.
+      - name: Каким интерпретатором собираем
+        run: uv run --frozen --no-sync python -c "import sys; print(sys.executable)"
 
       - name: Сборка
-        run: python -m PyInstaller voxduo.spec --noconfirm
+        run: uv run --frozen --no-sync python -m PyInstaller voxduo.spec --noconfirm
 
       - name: Проверка, что бинарник запускается
         # --check печатает сводку об окружении и выходит. Сейчас он всегда
@@ -80,6 +100,10 @@ jobs:
           name: voxduo-windows-x64
           path: voxduo-windows-x64.zip
           retention-days: 14
+
+      - name: Подчистить кеш uv
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   release:
     # Отдельный джоб ровно ради прав: contents: write нужен только для

@@ -7,7 +7,9 @@ name: checks
 # ждать, а потом игнорировать.
 #
 # Почему windows-latest, а не ubuntu: приложение только для Windows. Проверять
-# его на другой платформе — проверять то, чего у пользователей нет.
+# его на другой платформе — проверять то, чего у пользователей нет. Плюс
+# uv.lock собран под environments = ["sys_platform == 'win32'"], и на ubuntu
+# `uv sync --locked` просто не найдёт подходящего решения.
 
 on:
   pull_request:
@@ -38,10 +40,24 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # setup-python идёт ПЕРЕД setup-uv осознанно: в pyproject.toml стоит
+      # python-preference = "system", и uv должен найти уже разложенный здесь
+      # интерпретатор, а не скачивать свой. Собранный .exe делается на
+      # системном CPython, и проверять надо тот же самый.
+      #
+      # Ключа cache: pip больше нет: requirements*.txt удалены, кешировать
+      # нечего, а колёса теперь кеширует setup-uv по uv.lock.
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
-          cache: pip
+          python-version-file: .python-version
+
+      # Версия задана точно, а не плавающим тегом: у setup-uv мажорные теги
+      # (v8, v9, v10) не публикуются — проверено, последний плавающий это v7.
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "0.12.10"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       # Ниже каждая нативная команда идёт отдельным шагом, и это не стиль.
       # На windows-latest шаг без shell выполняется в pwsh, где код возврата
@@ -49,12 +65,16 @@ jobs:
       # раннером $ErrorActionPreference на python.exe не действует. Две
       # команды в одном run прячут падение первой: шаг зелёный при красном
       # линтере. Ради этого фаза и затевалась, так что здесь — по одной.
+      #
+      # --group dev обязателен: в pyproject.toml стоит default-groups = [],
+      # чтобы обычная установка не тянула инструменты разработки. Без этого
+      # ключа в окружении не окажется ни ruff, ни pytest.
       - name: Установка зависимостей
         id: deps
-        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+        run: uv sync --locked --group dev
 
       - name: Линтер
-        run: python -m ruff check --output-format=github .
+        run: uv run --frozen --no-sync python -m ruff check --output-format=github .
 
       # Условие шире обычного success(): при красном линтере всё равно нужен
       # вердикт остальных проверок, иначе на разбор уходит два прогона вместо
@@ -62,11 +82,11 @@ jobs:
       # падают на одном и том же ModuleNotFoundError и топят лог шумом.
       - name: Форматирование
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
-        run: python -m ruff format --check .
+        run: uv run --frozen --no-sync python -m ruff format --check .
 
       - name: Тесты
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
-        run: python -m pytest
+        run: uv run --frozen --no-sync python -m pytest
 
       # Тесты покрывают чистую логику — примерно пятую часть пакета. Интерфейс,
       # движки распознавания и синтеза, точка входа не импортировались в CI ни
@@ -75,4 +95,10 @@ jobs:
       # держать список модулей руками.
       - name: Импорт всех модулей
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
-        run: python -c "import importlib, pkgutil, voxduo; [importlib.import_module(m.name) for m in pkgutil.walk_packages(voxduo.__path__, 'voxduo.')]"
+        run: uv run --frozen --no-sync python -c "import importlib, pkgutil, voxduo; [importlib.import_module(m.name) for m in pkgutil.walk_packages(voxduo.__path__, 'voxduo.')]"
+
+      # Кеш иначе растёт бесконечно: prune выкидывает всё, что не нужно для
+      # восстановления текущего окружения.
+      - name: Подчистить кеш uv
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci

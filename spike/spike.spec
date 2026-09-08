@@ -3,7 +3,7 @@
 # Смысл этого файла — выяснить, что ломается при упаковке связки
 # FastAPI + uvicorn + pywebview, пока цена ошибки мала.
 #
-# Сборка: uv run pyinstaller spike/spike.spec --noconfirm
+# Сборка: uv run --frozen --no-sync python -m PyInstaller spike/spike.spec --noconfirm
 
 from PyInstaller.utils.hooks import collect_submodules
 

@@ -72,6 +72,7 @@
 | Тесты для `scripts/session_snapshot.py` — разбор плана сейчас не покрыт | `area:infra` `cost:S` | [#34](https://github.com/TheDragonBald/voxduo/issues/34) |
 | Резервная копия локальных документов вне репозитория | `area:infra` `cost:S` | [#35](https://github.com/TheDragonBald/voxduo/issues/35) |
 | Машинный вердикт для собранного `.exe`: `--check` всегда возвращает 0 | `area:infra` `cost:S` | [#36](https://github.com/TheDragonBald/voxduo/issues/36) |
+| Фронтенд не проверяется в CI: ни `tsc`, ни сборка Vite | `area:infra` `cost:S` | [#39](https://github.com/TheDragonBald/voxduo/issues/39) |
 
 ---
 

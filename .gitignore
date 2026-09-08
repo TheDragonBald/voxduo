@@ -24,6 +24,9 @@ CLAUDE.md
 samples/*
 !samples/.gitkeep
 
+# Выгрузка `just export` — отладочная, точка истины это uv.lock
+requirements-export.txt
+
 # Временные файлы старой версии
 temp_audio.wav
 

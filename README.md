@@ -25,7 +25,7 @@ Docker-образ». Тишина и паузы не превращаются в
 ## Требования
 
 - Windows 10 или 11, 64 бита
-- Python 3.13
+- Python 3.13 — если его нет, установщик подтянет сам
 - Около 8 ГБ на диске: модели, библиотеки, окружение
 - Видеокарта NVIDIA — **необязательно**, но с ней распознавание идёт в
   разы быстрее. На RTX 2060 SUPER `large-v3-turbo` обрабатывает запись
@@ -57,9 +57,9 @@ cd voxduo
 powershell -ExecutionPolicy Bypass -File install.ps1 -Shortcut
 ```
 
-Скрипт создаст изолированное окружение, поставит зависимости, сам определит
-видеокарту и подтянет для неё библиотеки CUDA. Устанавливать CUDA Toolkit
-отдельно не нужно.
+Скрипт поставит [uv](https://docs.astral.sh/uv/), если его нет, создаст
+окружение строго по `uv.lock`, сам определит видеокарту и подтянет для неё
+библиотеки CUDA. Устанавливать ни Python, ни CUDA Toolkit отдельно не нужно.
 
 Дополнительно:
 
@@ -68,6 +68,12 @@ powershell -ExecutionPolicy Bypass -File install.ps1 -Shortcut
 .\install.ps1 -NoGpu    # не ставить поддержку видеокарты
 .\install.ps1 -Dev      # инструменты разработки
 ```
+
+**Ключи задают окружение целиком, а не добавляют к нему.** Запуск без
+`-Silero` уберёт Silero, поставленный в прошлый раз: окружение определяется
+командой, а не историей запусков — так у всех оно одинаковое и совпадает с
+тем, на котором собирается готовая сборка. Молча ничего не пропадёт — скрипт
+сначала покажет, что именно удалит, и спросит подтверждения.
 
 ## Запуск
 
@@ -102,13 +108,15 @@ powershell -ExecutionPolicy Bypass -File install.ps1 -Shortcut
 Начните с диагностики — она показывает версии, видеокарту и пути:
 
 ```powershell
-.venv\Scripts\python.exe -m voxduo --check
+just check
 ```
+
+Без `just` — напрямую: `.venv\Scripts\python.exe -m voxduo --check`
 
 | Симптом | Что делать |
 |---|---|
-| Устройств CUDA: 0, хотя карта есть | Поставьте `requirements-gpu.txt`, обновите драйвер NVIDIA |
-| Синтез через edge-tts падает с 403 | Укажите текущую версию браузера в настройках (видно на `edge://settings/help`) или обновите пакет: `pip install -U edge-tts` |
+| Устройств CUDA: 0, хотя карта есть | Выполните `.\install.ps1` (видеокарта определяется сама) или `just install-gpu`, обновите драйвер NVIDIA |
+| Синтез через edge-tts падает с 403 | Укажите текущую версию браузера в настройках (видно на `edge://settings/help`) или обновите пакет: поднимите версию `edge-tts` в `pyproject.toml`, затем `uv lock --upgrade-package edge-tts` и `just install` |
 | Распознаётся пустота | Проверьте выбранный микрофон в настройках: индикатор рядом с кнопкой должен реагировать на голос |
 | Окно зависает при запуске | Модель качается в фоне, первый раз это несколько минут; смотрите журнал |
 
@@ -143,11 +151,16 @@ Microsoft Edge неофициально: условий использовани
 ## Разработка
 
 ```powershell
+just install-dev # инструменты разработки: ruff, pytest, PyInstaller
 just --list      # все команды
-just all         # линтер и тесты перед коммитом
+just all         # проверка лока, линтер и тесты перед коммитом
 just smoke       # живой прогон движков синтеза
 just check       # сводка окружения
 ```
+
+Зависимости живут в `pyproject.toml`, точные версии — в `uv.lock`; он
+коммитится и руками не правится. После правки `pyproject.toml` — `just lock`.
+Вернуть окружение ровно к локу, выбросив всё лишнее, — `just reset-env`.
 
 ---
 
@@ -165,9 +178,11 @@ automatic fallback between them.
 Also: five-entry history per mode surviving restarts, replayable synthesised
 audio, light and dark themes, and clear copy confirmation.
 
-Requires Windows 10/11 x64 and Python 3.13. An NVIDIA GPU is optional but
-makes recognition several times faster; CUDA libraries are installed through
-pip, no CUDA Toolkit needed.
+Requires Windows 10/11 x64. Dependencies — Python 3.13 included — are managed
+by [uv](https://docs.astral.sh/uv/) and pinned in `uv.lock`; `install.ps1`
+sets everything up. An NVIDIA GPU is optional but makes recognition several
+times faster, and its CUDA libraries come as regular wheels, so no CUDA
+Toolkit is needed.
 
 Code is GPL-3.0. Models are downloaded at runtime and keep their own
 licences — the defaults are MIT and CC0, non-commercial voices are available

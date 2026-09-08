@@ -2,8 +2,126 @@
 name = "voxduo"
 version = "0.1.0"
 description = "Распознавание и синтез речи на русском языке для Windows"
-requires-python = ">=3.11"
+requires-python = ">=3.13,<3.14"
 license = { text = "GPL-3.0-or-later" }
+
+# Версии закреплены точно: сборка .exe и чужие машины должны получать ровно то,
+# что проверено. Обновление — работа Dependabot, отдельным осознанным PR.
+dependencies = [
+    # --- Распознавание речи ---
+    "faster-whisper==1.2.1",
+    # cuda_setup.py вызывает ctranslate2.get_cuda_device_count() напрямую, до
+    # импорта faster_whisper. Пин наш, хотя faster-whisper его и так требует.
+    "ctranslate2==4.8.2",
+    "huggingface-hub==1.30.0",
+    # Оба приезжают транзитивно, но voxduo.spec обращается к ним ПО ИМЕНИ:
+    # copy_metadata("onnxruntime") и collect_data_files("certifi") падают с
+    # PackageNotFoundError, если пакет уйдёт из дерева. Раз сборка на них
+    # опирается — это часть контракта проекта, а не случайные попутчики.
+    "onnxruntime==1.29.0",
+    "certifi==2026.7.22",
+
+    # --- Синтез речи (edge-tts онлайн, Piper офлайн) ---
+    "edge-tts==7.2.8",
+    "piper-tts==1.8.0",
+
+    # --- Аудио ---
+    "sounddevice==0.5.6",
+    "soundfile==0.14.0",
+    "numpy==2.5.3",
+    # Декодер MP3 в tts/player.py: пакет импортируется там напрямую, плюс
+    # приезжает транзитивно от faster-whisper (av>=11). Держим свой пин, чтобы
+    # декодер не поехал сам собой вместе с обновлением распознавания.
+    "av==18.1.0",
+
+    # --- Интерфейс на Tkinter, живёт до конца Ф7 ---
+    "customtkinter==6.0.0",
+    # Нужен только для customtkinter.CTkImage, который пока не используется.
+    # Оставлен сознательно: до конца Ф7 приложение остаётся Tkinter-овым и
+    # картинка может понадобиться в любой момент. Вместе с уходом Tkinter — удалить.
+    "pillow==12.3.0",
+    "pyperclip==1.11.0",
+
+    # --- Вертикальный срез Ф0: React + FastAPI + pywebview ---
+    #
+    # Держим в основных сознательно, хотя сейчас их импортирует только spike/:
+    # с Ф2 этот стек становится основным интерфейсом, и дробить ради
+    # промежутка не стоит. Цена — около 15 МБ и четырнадцать пакетов в дереве
+    # (bottle, pydantic-core, pythonnet и прочие спутники pywebview).
+    #
+    # В voxduo.spec они при этом стоят в excludes, и это не противоречие:
+    # бандл собирается из Tkinter-версии, которая их не трогает. Когда в Ф7
+    # Tkinter уйдёт, строки из excludes уберутся вместе с ним.
+    "fastapi==0.141.1",
+    "uvicorn==0.52.4",
+    "pywebview==6.2.1",
+    # У голого uvicorn его нет — только у uvicorn[standard]. Без явной строки
+    # первый же точный `uv sync` снёс бы websockets и убил WebSocket из Ф0.
+    "websockets==17.1",
+]
+
+[project.optional-dependencies]
+# Ускорение на NVIDIA (~1 ГБ).
+#
+# Вопреки документации faster-whisper («pip install — Linux only»), эти пакеты
+# публикуют win_amd64 колёса, так что CUDA Toolkit ставить не нужно.
+# Пути к DLL регистрирует voxduo/cuda_setup.py до импорта faster_whisper.
+gpu = [
+    "nvidia-cublas-cu12==12.9.2.10",
+    "nvidia-cudnn-cu12==9.25.1.1",
+]
+
+# Третий движок TTS — Silero (~250 МБ).
+#
+# torch нужен ИСКЛЮЧИТЕЛЬНО ради Silero и вынесен отдельно: кому хватает
+# edge-tts и Piper, четверти гигабайта качать не приходится.
+# CPU-сборки достаточно — модель лёгкая, см. [tool.uv.sources] ниже.
+silero = ["torch==2.14.0"]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.16.6",
+    "pyinstaller==6.22.2",
+]
+
+# Индекс с CPU-сборками PyTorch. Раньше он жил строкой --index-url в
+# requirements-silero.txt; без явной записи здесь uv взял бы torch с PyPI
+# (index-strategy по умолчанию — first-index), и вместо 2.14.0+cpu в локе
+# оказался бы 2.14.0: другой артефакт с другим хешем.
+#
+# explicit = true обязателен. Без него объявленный индекс встаёт ВЫШЕ PyPI, и
+# оттуда поедет всё подряд, а не только torch.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[tool.uv]
+# Не библиотека: пакет не собирается и не ставится в окружение. Импорт держится
+# на pythonpath = ["."] у pytest и на запуске из корня проекта.
+package = false
+
+# Приложение только под Windows. Лок собирается ровно под эту платформу —
+# дверь односторонняя: вернуть прогон на ubuntu без пересборки лока не выйдет.
+environments = ["sys_platform == 'win32'"]
+
+# .exe собран на системном CPython 3.13.2, и PyInstaller должен видеть тот же
+# интерпретатор. Managed-Python остаётся запасным вариантом для чужой машины.
+python-preference = "system"
+
+# Та же граница, что и в гейте перед началом работ. Ключ существует с uv 0.5,
+# поэтому старая версия его honors и честно откажет вместо непонятной ошибки.
+required-version = ">=0.12.10"
+
+# Инструменты разработки не ставятся молча вместе с базовой установкой:
+# иначе `just install` стал бы равен `just install-dev`, а ключ -Dev в
+# install.ps1 перестал бы что-либо значить.
+default-groups = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

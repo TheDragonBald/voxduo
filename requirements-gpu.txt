@@ -1,8 +1,0 @@
-# Ускорение на NVIDIA (~1 ГБ). Ставится поверх requirements.txt.
-#
-# Вопреки документации faster-whisper ("pip install — Linux only"), эти пакеты
-# публикуют win_amd64 колёса, так что CUDA Toolkit ставить не нужно.
-# Пути к DLL регистрирует voxduo/cuda_setup.py до импорта faster_whisper.
-
-nvidia-cublas-cu12==12.9.2.10
-nvidia-cudnn-cu12==9.25.1.1

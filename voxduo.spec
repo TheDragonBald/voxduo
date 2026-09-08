@@ -70,6 +70,18 @@ excludes = [
     "pytest",
     "notebook",
     "transformers",
+    # Стек вертикального среза Ф0: он живёт в spike/ и на пути запуска
+    # Tkinter-версии не встречается (проверено обходом импортов). Строки
+    # здесь — страховка: случайный импорт не утащит полсотни мегабайт в
+    # бандл незаметно. Имена модульные, а не имена дистрибутивов, поэтому
+    # webview, а не pywebview: excludes сверяется с тем, что пишут в import.
+    "webview",
+    "fastapi",
+    "uvicorn",
+    "websockets",
+    "starlette",
+    "pydantic",
+    # av сюда НЕ вносить: tts/player.py декодирует им MP3.
 ]
 
 a = Analysis(
