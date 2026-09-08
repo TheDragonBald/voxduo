@@ -1,8 +1,0 @@
-# Третий движок TTS — Silero (~250 МБ). Ставится поверх requirements.txt.
-#
-# torch нужен ИСКЛЮЧИТЕЛЬНО ради Silero и вынесен отдельно: кому хватает
-# edge-tts и Piper, четверти гигабайта качать не приходится.
-# CPU-сборки достаточно — модель лёгкая.
-
---index-url https://download.pytorch.org/whl/cpu
-torch==2.14.0

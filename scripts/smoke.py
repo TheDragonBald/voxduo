@@ -3,8 +3,8 @@
 Тестами это не покрыть: нужны сеть, скачивание моделей и живой звук.
 Запускать перед релизом и после обновления зависимостей.
 
-    .venv/Scripts/python.exe scripts/smoke.py
-    .venv/Scripts/python.exe scripts/smoke.py --play
+    just smoke
+    just smoke-play
 """
 
 from __future__ import annotations

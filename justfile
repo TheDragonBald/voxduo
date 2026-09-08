@@ -1,8 +1,8 @@
 # Команды проекта VoxDuo.
 # Запуск: just <команда>. Без аргументов — список всех команд.
 #
-# Всё идёт через .venv, а не через python из PATH: в PATH здесь Python 3.14
-# без пакетов, и запуск оттуда падает с невнятной ошибкой импорта.
+# Всё идёт через uv: он держит .venv в соответствии с uv.lock, а python из PATH
+# здесь — 3.14 без пакетов, и запуск оттуда падает с невнятной ошибкой импорта.
 
 # just на Windows по умолчанию ищет оболочку sh. Она в системе есть —
 # C:\Program Files\Git\usr\bin\sh.exe, — но Git намеренно не добавляет этот
@@ -11,58 +11,93 @@
 # PowerShell есть на любой Windows и не требует ничего доустанавливать.
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
-python := ".venv/Scripts/python.exe"
+# Флаги для запуска чего-либо в готовом окружении.
+#
+# --frozen: не пересчитывать uv.lock. Без него uv может решить, что лок устарел,
+#   пойти в сеть и пере-резолвить зависимости прямо посреди прогона тестов.
+# --no-sync: не трогать .venv вообще. Установка — дело рецептов install-*,
+#   а не побочный эффект `just test`.
+run := "uv run --frozen --no-sync"
 
 # Показать список команд
 default:
     @just --list --unsorted
 
 # --- установка ---
+#
+# uv sync по умолчанию ТОЧНЫЙ: приводит .venv ровно к тому, что объявлено
+# выбранными экстрами и группами, и удаляет всё остальное. Поэтому здесь всюду
+# --inexact: каждый рецепт про одну добавку, и `just install-gpu` не должен
+# сносить torch, а `just install` — гигабайт библиотек CUDA.
+# Привести окружение ровно к локу — отдельная команда reset-env.
 
-# Создать окружение и поставить базовые зависимости
+# Поставить базовые зависимости (создаёт .venv, если его нет)
 install:
-    py -3.13 -m venv .venv
-    {{ python }} -m pip install -U pip
-    {{ python }} -m pip install -r requirements.txt
+    uv sync --inexact
 
 # Доставить поддержку видеокарты NVIDIA (~1 ГБ)
 install-gpu:
-    {{ python }} -m pip install -r requirements-gpu.txt
+    uv sync --inexact --extra gpu
 
 # Доставить движок синтеза Silero, ему нужен torch (~250 МБ)
 install-silero:
-    {{ python }} -m pip install -r requirements-silero.txt
+    uv sync --inexact --extra silero
 
 # Доставить инструменты разработки
 install-dev:
-    {{ python }} -m pip install -r requirements-dev.txt
+    uv sync --inexact --group dev
 
 # Полная установка: всё сразу
-install-all: install install-gpu install-silero install-dev
+install-all:
+    uv sync --all-extras --all-groups
+
+# Привести окружение ровно к uv.lock — УДАЛЯЕТ всё лишнее
+#
+# Единственный рецепт с точным sync. Нужен, когда окружение обросло
+# экспериментами и хочется вернуться к проверенному состоянию.
+reset-env:
+    uv sync --all-extras --all-groups
+
+# --- зависимости ---
+
+# Пересчитать uv.lock после правки pyproject.toml
+lock:
+    uv lock
+
+# Проверить, что uv.lock не разошёлся с pyproject.toml
+locked:
+    uv lock --check
+
+# Выгрузить зависимости в формате requirements.txt — для отладки
+#
+# Файл в .gitignore: точка истины — uv.lock, а не выгрузка из него. Для
+# pip-совместимости понадобились бы ещё --all-extras и --emit-index-url.
+export:
+    uv export --frozen --format requirements.txt --no-hashes --no-dev -o requirements-export.txt
 
 # --- запуск ---
 
 # Запустить приложение
 run:
-    {{ python }} -m voxduo
+    {{ run }} python -m voxduo
 
 # Запустить с подробными логами (в лог попадают и тексты)
 debug:
-    {{ python }} -m voxduo --debug
+    {{ run }} python -m voxduo --debug
 
 # Показать сводку об окружении: версии, видеокарта, пути
 check:
-    {{ python }} -m voxduo --check
+    {{ run }} python -m voxduo --check
 
 # --- проверки ---
 
 # Прогнать тесты
 test:
-    {{ python }} -m pytest
+    {{ run }} python -m pytest
 
 # Тесты с отчётом о покрытии
 cov:
-    {{ python }} -m pytest --cov=voxduo --cov-report=term-missing
+    {{ run }} python -m pytest --cov=voxduo --cov-report=term-missing
 
 # Проверить стиль и форматирование
 #
@@ -71,30 +106,30 @@ cov:
 # Форматирование проверяется и здесь, и в CI — иначе «у меня зелено»
 # перестаёт означать «в CI зелено», а именно это расхождение мы и лечим.
 lint:
-    {{ python }} -m ruff check .
-    {{ python }} -m ruff format --check .
+    {{ run }} python -m ruff check .
+    {{ run }} python -m ruff format --check .
 
 # Отформатировать и починить, что чинится автоматически
 fmt:
-    {{ python }} -m ruff format .
-    {{ python }} -m ruff check --fix .
+    {{ run }} python -m ruff format .
+    {{ run }} python -m ruff check --fix .
 
 # Всё, что стоит прогнать перед коммитом
-all: lint test
+all: locked lint test
 
 # Прогон движков синтеза вживую: сеть, модели, звук
 smoke:
-    {{ python }} scripts/smoke.py
+    {{ run }} python scripts/smoke.py
 
 # То же, но с воспроизведением результата
 smoke-play:
-    {{ python }} scripts/smoke.py --play
+    {{ run }} python scripts/smoke.py --play
 
 # --- сборка и обслуживание ---
 
 # Собрать voxduo.exe
 build:
-    {{ python }} -m PyInstaller voxduo.spec --noconfirm
+    {{ run }} python -m PyInstaller voxduo.spec --noconfirm
 
 # Открыть папку с логами
 logs:

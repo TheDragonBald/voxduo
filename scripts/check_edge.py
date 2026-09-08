@@ -5,7 +5,7 @@
 более свежую версию клиента.
 
 Запуск вручную:
-    .venv/Scripts/python.exe scripts/check_edge.py
+    uv run --frozen --no-sync python scripts/check_edge.py
 """
 
 from __future__ import annotations
