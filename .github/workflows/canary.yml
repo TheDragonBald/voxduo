@@ -22,6 +22,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Сетевой пробник, которому нужны секунды. Дефолтные шесть часов на
+    # зависшем шаге здесь не нужны никому.
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v5

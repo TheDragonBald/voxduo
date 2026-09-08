@@ -13,6 +13,11 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+# Исходный скрипт хранится как есть, для истории. per-file-ignores ниже
+# отключает ему правила линтера, но форматтер файл всё равно трогает, а при
+# передаче файлов списком (git-хуки) настройки исключений вообще не
+# применяются без --force-exclude. Настоящий exclude закрывает оба случая.
+extend-exclude = ["legacy"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]

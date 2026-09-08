@@ -8,16 +8,34 @@ name: build
 
 on:
   push:
+    branches: [main]
     tags:
       - "v*"
+  pull_request:
+    # Полную сборку на каждый PR не гоняем: минуты ради правки комментария —
+    # плохая сделка. Гоняем там, где ломается именно упаковка: состав
+    # зависимостей, spec, точка входа, сам workflow. Изменения в voxduo/**
+    # ловит push в main — сборка отработает сразу после сквоша, задолго до
+    # того, как кто-то поставит тег.
+    paths:
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - "voxduo.spec"
+      - "launcher.py"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v5
@@ -27,15 +45,19 @@ jobs:
           python-version: "3.13"
           cache: pip
 
+      # По одной нативной команде на шаг: код возврата шага равен
+      # $LASTEXITCODE последней команды блока, поэтому упавший линтер
+      # маскировался следующим за ним pytest, а шаг оставался зелёным.
+      # `pip install --upgrade pip` убран: setup-python и так даёт свежий pip,
+      # а второй командой в блоке он падал бы молча.
       - name: Установка зависимостей
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt -r requirements-dev.txt
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Линтер и тесты
-        run: |
-          python -m ruff check .
-          python -m pytest
+      - name: Линтер
+        run: python -m ruff check .
+
+      - name: Тесты
+        run: python -m pytest
 
       - name: Сборка
         run: python -m PyInstaller voxduo.spec --noconfirm
