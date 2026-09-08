@@ -7,7 +7,7 @@
 Собирает только детерминированные данные. Ничего не интерпретирует — именно
 поэтому снимку можно верить, в отличие от сгенерированного резюме.
 
-Запуск вручную: uv run python scripts/session_snapshot.py
+Запуск вручную: uv run --frozen --no-sync python scripts/session_snapshot.py
 """
 
 from __future__ import annotations

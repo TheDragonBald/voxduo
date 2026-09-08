@@ -45,8 +45,22 @@ function Write-Warn($text) { Write-Host "    $text" -ForegroundColor Yellow }
 # Версию читаем разбором `uv --version`: этот вывод есть у всех версий, в
 # отличие от подкоманды self version, появившейся позже.
 function Get-UvVersion {
+    # Проверка до вызова: когда uv не установлен вовсе, `& uv` бросает
+    # CommandNotFoundException, а при $ErrorActionPreference = 'Stop' это
+    # терминальная ошибка — скрипт умрёт ровно там, где должен был начать
+    # ставить uv. Плюс $LASTEXITCODE остаётся от прошлой команды и врёт.
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { return $null }
+
+    # На время вызова снимаем Stop: PowerShell 5.1 заворачивает каждую строку
+    # stderr нативной программы в ErrorRecord, и любое предупреждение uv
+    # оборвало бы установку даже при успешном коде возврата.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $raw = & uv --version 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $raw) { return $null }
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
+
+    if ($code -ne 0 -or -not $raw) { return $null }
     if ($raw -match '(\d+\.\d+\.\d+)') { return [version]$Matches[1] }
     return $null
 }
@@ -119,8 +133,17 @@ if ($null -eq $uvVersion) {
 # python-preference = "system". На машине с уже установленным 3.13 она молча
 # качала бы лишние двадцать мегабайт.
 Write-Step "Проверяем Python"
+# Тот же приём, что в Get-UvVersion: на машине без подходящего интерпретатора
+# `uv python find` завершается ошибкой и пишет в stderr, а при Stop это
+# обрывает скрипт — то есть ветка установки Python была бы недостижима.
+# Скачиванием find не занимается: он только ищет среди уже имеющихся.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $found = & uv python find 2>$null
-if ($LASTEXITCODE -eq 0 -and $found) {
+$findExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+
+if ($findExit -eq 0 -and $found) {
     Write-Ok "найден: $found"
 } else {
     Write-Ok "подходящего нет, ставим"
@@ -181,11 +204,24 @@ if ($planExit -ne 0) {
 }
 
 $removals = $plan | Where-Object { $_ -match '^\s*-\s' }
-if ($removals -and -not $Yes) {
-    Write-Warn "Из окружения будет УДАЛЕНО:"
-    $removals | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+# Установки показываем не все подряд, а только тяжёлые: библиотеки CUDA — это
+# около гигабайта, torch — четверть. Забытый -NoGpu иначе качал бы их молча,
+# а предохранитель заводился ровно против молчаливых сюрпризов.
+$bigInstalls = $plan | Where-Object { $_ -match '^\s*\+\s*(nvidia-|torch)' }
+
+if (($removals -or $bigInstalls) -and -not $Yes) {
+    if ($removals) {
+        Write-Warn "Из окружения будет УДАЛЕНО:"
+        $removals | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+    }
+    if ($bigInstalls) {
+        Write-Warn "Будет СКАЧАНО (это сотни мегабайт):"
+        $bigInstalls | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+    }
     Write-Warn "Набор ключей задаёт окружение целиком. Чтобы сохранить эти пакеты,"
     Write-Warn "перезапустите с нужными ключами: -Silero (Silero), -Dev (разработка)."
+    Write-Warn "Поддержка видеокарты ключом не включается: она определяется по"
+    Write-Warn "nvidia-smi, а -NoGpu её выключает."
     # В неинтерактивной сессии (CI, запуск из другого скрипта) Read-Host читает
     # EOF и падает. Отказ там честнее вопроса, на который некому ответить.
     if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {

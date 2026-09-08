@@ -14,6 +14,12 @@ dependencies = [
     # импорта faster_whisper. Пин наш, хотя faster-whisper его и так требует.
     "ctranslate2==4.8.2",
     "huggingface-hub==1.30.0",
+    # Оба приезжают транзитивно, но voxduo.spec обращается к ним ПО ИМЕНИ:
+    # copy_metadata("onnxruntime") и collect_data_files("certifi") падают с
+    # PackageNotFoundError, если пакет уйдёт из дерева. Раз сборка на них
+    # опирается — это часть контракта проекта, а не случайные попутчики.
+    "onnxruntime==1.29.0",
+    "certifi==2026.7.22",
 
     # --- Синтез речи (edge-tts онлайн, Piper офлайн) ---
     "edge-tts==7.2.8",
@@ -37,6 +43,15 @@ dependencies = [
     "pyperclip==1.11.0",
 
     # --- Вертикальный срез Ф0: React + FastAPI + pywebview ---
+    #
+    # Держим в основных сознательно, хотя сейчас их импортирует только spike/:
+    # с Ф2 этот стек становится основным интерфейсом, и дробить ради
+    # промежутка не стоит. Цена — около 15 МБ и четырнадцать пакетов в дереве
+    # (bottle, pydantic-core, pythonnet и прочие спутники pywebview).
+    #
+    # В voxduo.spec они при этом стоят в excludes, и это не противоречие:
+    # бандл собирается из Tkinter-версии, которая их не трогает. Когда в Ф7
+    # Tkinter уйдёт, строки из excludes уберутся вместе с ним.
     "fastapi==0.141.1",
     "uvicorn==0.52.4",
     "pywebview==6.2.1",
