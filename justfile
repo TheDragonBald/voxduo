@@ -100,6 +100,37 @@ build:
 logs:
     explorer.exe "$env:LOCALAPPDATA\VoxDuo\logs"
 
+# --- защита ветки main ---
+#
+# Ruleset «main protection» требует зелёный джоб checks перед мержем и
+# запрещает force-push и удаление ветки. Список обхода пуст намеренно: внести
+# туда владельца — значит выключить защиту, потому что мержит как раз он.
+#
+# Аварийный выход существует ровно для одного случая: Actions недоступны, а
+# влить нужно сейчас. Тогда `just unprotect`, мерж, `just protect` обратно.
+# Не для случая «проверка красная, но мне кажется, что всё нормально».
+#
+# Два ограничения, найденные на практике:
+#  * enforcement=evaluate требует Enterprise, поэтому снятие — только disabled;
+#  * PowerShell 5.1 ломает аргумент gh, если внутри выражения --jq есть
+#    двойные кавычки: строка разбивается, и gh получает два аргумента вместо
+#    одного. Поэтому фильтр по имени заменён на id, а вывод — на @tsv.
+
+# id ruleset. Если правило пересоздадут, новый покажет `just protection`
+ruleset := "22542245"
+
+# Показать состояние защиты main
+protection:
+    gh api repos/TheDragonBald/voxduo/rulesets --jq '.[]|[.id,.name,.enforcement]|@tsv'
+
+# Снять защиту main (аварийно; вернуть сразу же через just protect)
+unprotect:
+    gh api -X PUT repos/TheDragonBald/voxduo/rulesets/{{ ruleset }} -f enforcement=disabled --jq '.enforcement'
+
+# Вернуть защиту main
+protect:
+    gh api -X PUT repos/TheDragonBald/voxduo/rulesets/{{ ruleset }} -f enforcement=active --jq '.enforcement'
+
 # Убрать временные файлы сборки и кэши
 #
 # Проверяем существование перед удалением, а не глушим ошибки через
