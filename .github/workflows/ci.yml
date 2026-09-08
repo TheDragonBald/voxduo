@@ -1,0 +1,78 @@
+name: checks
+
+# Быстрые проверки на каждый pull request: линтер, формат, тесты.
+#
+# Отдельно от build.yml намеренно. Сборка .exe идёт минуты и нужна далеко не
+# на каждом изменении; эти проверки должны отвечать быстро, иначе их начнут
+# ждать, а потом игнорировать.
+#
+# Почему windows-latest, а не ubuntu: приложение только для Windows. Проверять
+# его на другой платформе — проверять то, чего у пользователей нет.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Новый пуш в ветку с открытым PR отменяет предыдущий прогон: проверять
+# промежуточный коммит смысла нет. Для main и тегов не отменяем — там каждый
+# прогон относится к своей точке истории.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    # Имя джоба — это контекст обязательной проверки в ruleset на main.
+    # Переименование отвяжет защиту ветки, и красный CI снова перестанет
+    # мешать мержу. Менять только вместе с настройкой ruleset.
+    name: checks
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      # Ниже каждая нативная команда идёт отдельным шагом, и это не стиль.
+      # На windows-latest шаг без shell выполняется в pwsh, где код возврата
+      # шага равен $LASTEXITCODE ПОСЛЕДНЕЙ команды блока, а дописанный
+      # раннером $ErrorActionPreference на python.exe не действует. Две
+      # команды в одном run прячут падение первой: шаг зелёный при красном
+      # линтере. Ради этого фаза и затевалась, так что здесь — по одной.
+      - name: Установка зависимостей
+        id: deps
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Линтер
+        run: python -m ruff check --output-format=github .
+
+      # Условие шире обычного success(): при красном линтере всё равно нужен
+      # вердикт остальных проверок, иначе на разбор уходит два прогона вместо
+      # одного. Но только если зависимости встали — иначе три шага подряд
+      # падают на одном и том же ModuleNotFoundError и топят лог шумом.
+      - name: Форматирование
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m ruff format --check .
+
+      - name: Тесты
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -m pytest
+
+      # Тесты покрывают чистую логику — примерно пятую часть пакета. Интерфейс,
+      # движки распознавания и синтеза, точка входа не импортировались в CI ни
+      # разу, поэтому сломанный импорт или опечатка в модуле доезжали до
+      # запуска у пользователя. Обход пакета ловит это за секунды и не требует
+      # держать список модулей руками.
+      - name: Импорт всех модулей
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: python -c "import importlib, pkgutil, voxduo; [importlib.import_module(m.name) for m in pkgutil.walk_packages(voxduo.__path__, 'voxduo.')]"

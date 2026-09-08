@@ -22,6 +22,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Сетевой пробник, которому нужны секунды. Дефолтные шесть часов на
+    # зависшем шаге здесь не нужны никому.
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v5
@@ -35,10 +38,16 @@ jobs:
 
       - name: Проверка синтеза
         id: probe
+        # Свой таймаут, вдвое короче джобового. При зависании сети падает ШАГ,
+        # и следующий шаг видит failure(). Если бы сработал таймаут джоба, это
+        # была бы отмена: шаги с `if: failure()` при ней не выполняются, и
+        # issue не появился бы — при том что зависание и есть самый обычный
+        # сетевой отказ, ради которого канарейка и заведена.
+        timeout-minutes: 5
         run: python scripts/check_edge.py
 
       - name: Завести issue, если синтез сломался
-        if: failure()
+        if: ${{ failure() || cancelled() }}
         uses: actions/github-script@v8
         with:
           script: |

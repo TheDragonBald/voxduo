@@ -63,6 +63,16 @@
 | Автопереподключение WebSocket и видимое состояние связи | `area:ui` `cost:S` | [#7](https://github.com/TheDragonBald/voxduo/issues/7) |
 | Проверять собранный `.exe` в CI: HTTP, статика, WebSocket | `area:infra` `cost:S` | [#8](https://github.com/TheDragonBald/voxduo/issues/8) |
 
+## Найдено при настройке процесса (фаза Ф1)
+
+| Идея | Метки | Issue |
+|---|---|---|
+| Хук проверяет факт прогона тестов, а не только напоминает о нём | `area:infra` `cost:M` | [#32](https://github.com/TheDragonBald/voxduo/issues/32) |
+| Оформить ритуалы проекта отдельным скиллом, чтобы срабатывали по триггеру | `area:docs` `cost:M` | [#33](https://github.com/TheDragonBald/voxduo/issues/33) |
+| Тесты для `scripts/session_snapshot.py` — разбор плана сейчас не покрыт | `area:infra` `cost:S` | [#34](https://github.com/TheDragonBald/voxduo/issues/34) |
+| Резервная копия локальных документов вне репозитория | `area:infra` `cost:S` | [#35](https://github.com/TheDragonBald/voxduo/issues/35) |
+| Машинный вердикт для собранного `.exe`: `--check` всегда возвращает 0 | `area:infra` `cost:S` | [#36](https://github.com/TheDragonBald/voxduo/issues/36) |
+
 ---
 
 ## Уже реализовано
