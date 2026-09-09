@@ -77,6 +77,8 @@
 | Убрать дубль пина edge-tts из `canary.yml` | `area:infra` `cost:S` | [#42](https://github.com/TheDragonBald/voxduo/issues/42) |
 | `python-preference = system` — предпочтение, а не запрет | `area:infra` `cost:S` | [#43](https://github.com/TheDragonBald/voxduo/issues/43) |
 | Запасной декодер MP3 склеивает стереоканалы вместо микширования | `area:tts` `cost:S` | [#45](https://github.com/TheDragonBald/voxduo/issues/45) |
+| `just clean` удаляет `.mypy_cache`, следующая проверка типов дорожает вшестеро | `area:infra` `cost:S` | [#46](https://github.com/TheDragonBald/voxduo/issues/46) |
+| Нет тестов на `tts/player.py` и `logging_setup.py` | `area:infra` `cost:S` | [#47](https://github.com/TheDragonBald/voxduo/issues/47) |
 
 ---
 
