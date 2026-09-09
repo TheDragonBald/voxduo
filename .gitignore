@@ -46,3 +46,9 @@ node_modules/
 # Личные настройки Claude Code и снимок состояния сессии
 .claude/settings.local.json
 .claude/session-state.md
+
+# Личные переопределения git-хуков. Шаблон, а не одно имя: lefthook ищет
+# локальный конфиг под несколькими — lefthook-local.yml, .lefthook-local.yml,
+# плюс варианты с .yaml, — и строки под одно имя не хватило бы.
+lefthook-local.*
+.lefthook-local.*
