@@ -31,9 +31,12 @@ import sys
 # естественная замена как раз `git -C`.
 _GIT_FLAGS = r"(?:\s+(?:-[A-Za-z]\s+\S+|--?[\w-]+(?:=\S+)?))*"
 
-# Начало этапа: новая ветка. `git switch -c <имя>` и старый `git checkout -b
-# <имя>` — оба в ходу, второй у части команд ещё не сменился на первый.
-BRANCH_START = re.compile(rf"\bgit\b{_GIT_FLAGS}\s+(?:switch\s+-c|checkout\s+-b)\b")
+# Начало этапа: новая ветка. `git switch -c` / `git switch -C` / `git switch
+# --create` и старый `git checkout -b` / `git checkout -B` — все формы в ходу,
+# `-C`/`-B`/`--create` дополнительно перезаписывают ветку, если та уже есть.
+BRANCH_START = re.compile(
+    rf"\bgit\b{_GIT_FLAGS}\s+(?:switch\s+(?:-[cC]|--create)|checkout\s+-[bB])\b"
+)
 
 # Коммит. Регулярка не менялась с версии, где ловились `git -C <путь> commit`
 # и `git --no-pager commit`, — три бага стоило найти это правило, трогать не надо.
@@ -43,13 +46,6 @@ COMMIT = re.compile(rf"\bgit\b{_GIT_FLAGS}\s+commit\b")
 # не объединены в один паттерн.
 PR_CREATE = re.compile(r"\bgh\s+pr\s+create\b")
 PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
-
-# Исторический паттерн: сумма COMMIT / PR_CREATE / PR_MERGE, как было до
-# разделения на моменты. В логике хука больше не участвует — выбор текста
-# идёт по MOMENTS ниже, — но остаётся как есть, потому что его напрямую
-# проверяют старые тесты (границы на `git -C`, `--no-pager`, `git commitx` и
-# так далее), и переносить эти проверки на новые паттерны без нужды незачем.
-TRIGGERS = re.compile(f"{COMMIT.pattern}|{PR_CREATE.pattern}|{PR_MERGE.pattern}")
 
 REMINDER_BRANCH_START = (
     "Начинается этап. Новая функциональность — сначала `brainstorming`, до "
@@ -84,15 +80,39 @@ REMINDER_PR_MERGE = (
 )
 
 # Порядок задан явно — от начала этапа к его закрытию, а не как лягут
-# словари. В одной команде может встретиться два триггера сразу
-# (`git switch -c x && git commit`), и без явного порядка результат был бы
-# случайным. Первый совпавший по этому списку и выигрывает.
+# словари. Это тай-брейкер на случай двух совпадений в одной и той же позиции
+# строки (в реальности такого не бывает — паттерны не пересекаются), а не
+# основной критерий выбора: см. _select_reminder ниже. При обычной коллизии
+# (`git switch -c x && git commit`) побеждает не порядок списка, а то, что
+# стоит в команде раньше по тексту.
 MOMENTS: list[tuple[re.Pattern[str], str]] = [
     (BRANCH_START, REMINDER_BRANCH_START),
     (COMMIT, REMINDER_COMMIT),
     (PR_CREATE, REMINDER_PR_CREATE),
     (PR_MERGE, REMINDER_PR_MERGE),
 ]
+
+
+def _select_reminder(command: str) -> str | None:
+    """Выбирает напоминание по самой левой позиции совпадения в строке.
+
+    Не "первый по списку MOMENTS" — так коллизии двух триггеров в одной
+    команде были бы регрессией: сообщения коммитов в этом проекте регулярно
+    упоминают git-команды текстом (например, `git commit -m 'см. git switch
+    -c пример'`), и такая строка обязана дать commit-напоминание, а не
+    branch-start только потому, что BRANCH_START стоит в списке раньше.
+    "От специфичного к общему" здесь значит "от упомянутого раньше в самой
+    команде", а не "от начала этапа к его закрытию" — это только тай-брейкер
+    при равной позиции (см. комментарий у MOMENTS).
+    """
+    hits: list[tuple[int, int, str]] = []
+    for index, (pattern, text) in enumerate(MOMENTS):
+        match = pattern.search(command)
+        if match is not None:
+            hits.append((match.start(), index, text))
+    if not hits:
+        return None
+    return min(hits)[2]
 
 
 def main() -> int:
@@ -114,8 +134,8 @@ def main() -> int:
             if isinstance(raw, str):
                 command = raw
 
-    # Первый совпавший по порядку MOMENTS и выигрывает — см. комментарий там же.
-    reminder = next((text for pattern, text in MOMENTS if pattern.search(command)), None)
+    # Выбор по самой левой позиции совпадения — см. _select_reminder.
+    reminder = _select_reminder(command)
     if reminder is None:
         return 0
 
