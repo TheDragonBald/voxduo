@@ -95,6 +95,9 @@ def test_hook_fires_pr_reminder(command: str, expected: str) -> None:
         "git switch main",
         "git checkout main",
         "git checkout -- file.txt",
+        # Граница после длинных флагов: `--create` — не префикс любого флага,
+        # начинающегося с этих букв
+        "git switch --create-reflog",
     ],
 )
 def test_hook_stays_silent(command: str) -> None:
@@ -142,6 +145,10 @@ def test_output_is_pure_ascii() -> None:
         # Словарь вместо строки: str() от него содержит нужную подстроку,
         # и наивная проверка выдала бы напоминание на пустом месте
         '{"tool_input": {"command": {"a": "git commit"}}}',
+        # tool_input есть, а ключа command в нём нет вовсе — не то же самое,
+        # что command: null. Мутация tool_input["command"] вместо .get(...)
+        # дала бы трейсбек и код 1, а этот кейс — единственный, кто это ловит
+        '{"tool_input": {}}',
     ],
 )
 def test_junk_input_is_silent(payload: str) -> None:
@@ -160,6 +167,9 @@ def test_junk_input_is_silent(payload: str) -> None:
         # этапа
         ("git switch -C hotfix", "brainstorming"),
         ("git switch --create hotfix", "brainstorming"),
+        # Длинная форма -C: `git switch -h` подтверждает `--force-create`,
+        # длинной формы у `checkout -B` нет — проверено, не добавляем
+        ("git switch --force-create hotfix", "brainstorming"),
         ("git checkout -B main", "brainstorming"),
         # Глобальные флаги git перед подкомандой — та же щель, что три раза
         # стоила проекту багов у COMMIT (см. историческую границу ниже)
@@ -189,6 +199,25 @@ def test_leftmost_trigger_wins_on_two_triggers_in_one_command() -> None:
     context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "brainstorming" in context
     assert "verification-before-completion" not in context
+
+
+def test_achievable_tie_resolved_by_moments_order() -> None:
+    """Ничья в позиции совпадения достижима на реальном вводе, не только в теории.
+
+    `git -a switch -c commit` матчит и BRANCH_START, и COMMIT с позиции 0:
+    `_GIT_FLAGS` поглощает `-a switch` как пару «флаг + аргумент», затем `-c`
+    как одиночный флаг, и находит `commit`. Побеждает BRANCH_START — не по
+    смыслу текста команды (создание ветки), а потому что он стоит в списке
+    MOMENTS раньше COMMIT. Это единственный тест, который различает
+    «тай-брейкер по порядку списка» и «выбор ничем не удерживается»: при
+    развороте MOMENTS (MOMENTS[::-1]) он обязан покраснеть, показывая
+    commit-текст вместо branch-start. Проверено вручную по правилу мутации
+    этого фикса, разворот в код не попал.
+    """
+    command = "git -a switch -c commit"
+    result = run_hook(json.dumps({"tool_input": {"command": command}}))
+    context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "brainstorming" in context
 
 
 @pytest.mark.parametrize(
