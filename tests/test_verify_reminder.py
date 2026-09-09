@@ -98,6 +98,12 @@ def test_hook_fires_pr_reminder(command: str, expected: str) -> None:
         # Граница после длинных флагов: `--create` — не префикс любого флага,
         # начинающегося с этих букв
         "git switch --create-reflog",
+        # Поиск по документации: команда здесь аргумент, а не команда. До
+        # якоря позиции хук отвечал на такие строки напоминанием о начале
+        # этапа — шум в контексте на ровном месте, которого на main не было
+        "grep 'git switch -c' CLAUDE.md",
+        "rg 'gh pr merge' -n docs/",
+        "echo 'сначала git commit, потом gh pr create'",
     ],
 )
 def test_hook_stays_silent(command: str) -> None:
@@ -218,6 +224,50 @@ def test_achievable_tie_resolved_by_moments_order() -> None:
     result = run_hook(json.dumps({"tool_input": {"command": command}}))
     context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "brainstorming" in context
+
+
+@pytest.mark.parametrize(
+    ("command", "expected", "unexpected"),
+    [
+        # Упоминание ПОСЛЕ настоящей команды: сообщение коммита. Этот порядок
+        # ловился и до якоря — его лечил выбор по позиции
+        (
+            "git commit -m 'см. git switch -c пример'",
+            "verification-before-completion",
+            "brainstorming",
+        ),
+        # Упоминание ПЕРЕД настоящей командой: строка дописывается в документ,
+        # следом коммит. Этот порядок выбор по позиции лечить не мог — он
+        # ровно его и ломал, отдавая напоминание тексту, а не команде
+        (
+            "echo 'см. git switch -c пример' >> notes.md && git commit -m x",
+            "verification-before-completion",
+            "brainstorming",
+        ),
+        # Тот же порядок в форме, которая в этом проекте встречается чаще
+        # всего: поиск по документации, а следом настоящая команда
+        (
+            "grep 'gh pr create' CLAUDE.md && git commit -am wip",
+            "verification-before-completion",
+            "requesting-code-review",
+        ),
+    ],
+)
+def test_mention_in_text_never_beats_a_real_command(
+    command: str, expected: str, unexpected: str
+) -> None:
+    """Упоминание команды в тексте не перебивает настоящую команду ни в каком порядке.
+
+    Держится якорем `_CMD_START`: паттерн срабатывает только в начале строки
+    или после разделителя оболочки. Снятие якоря обязано ронять второй и
+    третий случай — первый переживёт снятие, потому что его лечит выбор по
+    позиции. Именно поэтому здесь оба порядка, а не один: с одним лишь первым
+    случаем следующая правка снова развернула бы критерий незамеченной.
+    """
+    result = run_hook(json.dumps({"tool_input": {"command": command}}))
+    context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert expected in context
+    assert unexpected not in context
 
 
 @pytest.mark.parametrize(
