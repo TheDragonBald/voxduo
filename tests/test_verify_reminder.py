@@ -19,8 +19,14 @@ SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "verify_reminder.p
 
 
 def run_hook(payload: str) -> subprocess.CompletedProcess[str]:
-    """Прогоняет скрипт так же, как это делает Claude Code: JSON на stdin."""
-    return subprocess.run(
+    """Прогоняет скрипт так же, как это делает Claude Code: JSON на stdin.
+
+    Инвариант проекта — хук PreToolUse никогда не блокирует вызов и всегда
+    завершается кодом 0 (блокировка — это код 2). Проверяем его здесь один
+    раз, чтобы он покрывал каждый тест файла, а не только те немногие, что
+    сами дублировали эту проверку.
+    """
+    result = subprocess.run(
         [sys.executable, str(SCRIPT)],
         input=payload,
         capture_output=True,
@@ -29,6 +35,8 @@ def run_hook(payload: str) -> subprocess.CompletedProcess[str]:
         timeout=30,
         check=False,
     )
+    assert result.returncode == 0, f"хук вернул {result.returncode}: {result.stderr}"
+    return result
 
 
 @pytest.mark.parametrize(
@@ -82,6 +90,11 @@ def test_hook_fires_pr_reminder(command: str, expected: str) -> None:
         # Границы слов: похожие, но другие команды
         "git commitx",
         "mygit commit",
+        # Штатный шаг 6 процедуры проекта («Чистка: git switch main →
+        # git pull») и обычный откат файла — не начало этапа, молчать обязан
+        "git switch main",
+        "git checkout main",
+        "git checkout -- file.txt",
     ],
 )
 def test_hook_stays_silent(command: str) -> None:
@@ -148,6 +161,10 @@ def test_junk_input_is_silent(payload: str) -> None:
         ("git switch -C hotfix", "brainstorming"),
         ("git switch --create hotfix", "brainstorming"),
         ("git checkout -B main", "brainstorming"),
+        # Глобальные флаги git перед подкомандой — та же щель, что три раза
+        # стоила проекту багов у COMMIT (см. историческую границу ниже)
+        ("git -C D:/proj switch -c f1-next", "brainstorming"),
+        ("git --no-pager checkout -b fix-x", "brainstorming"),
         ("git commit -m 'x'", "verification-before-completion"),
         ("gh pr create --base main", "requesting-code-review"),
         ("gh pr merge 44 --squash", "IDEAS.md"),
