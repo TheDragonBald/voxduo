@@ -76,6 +76,7 @@
 | `install.ps1` не проверяется ни одним workflow | `area:infra` `cost:M` | [#41](https://github.com/TheDragonBald/voxduo/issues/41) |
 | Убрать дубль пина edge-tts из `canary.yml` | `area:infra` `cost:S` | [#42](https://github.com/TheDragonBald/voxduo/issues/42) |
 | `python-preference = system` — предпочтение, а не запрет | `area:infra` `cost:S` | [#43](https://github.com/TheDragonBald/voxduo/issues/43) |
+| Запасной декодер MP3 склеивает стереоканалы вместо микширования | `area:tts` `cost:S` | [#45](https://github.com/TheDragonBald/voxduo/issues/45) |
 
 ---
 
