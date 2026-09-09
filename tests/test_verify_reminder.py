@@ -114,3 +114,32 @@ def test_junk_input_is_silent(payload: str) -> None:
     result = run_hook(payload)
     assert result.returncode == 0, f"ненулевой код на входе {payload!r}"
     assert result.stdout.strip() == "", f"лишний вывод на входе {payload!r}"
+
+
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("git switch -c f1-lefthook", "brainstorming"),
+        ("git checkout -b fix-encoding", "brainstorming"),
+        ("git commit -m 'x'", "verification-before-completion"),
+        ("gh pr create --base main", "requesting-code-review"),
+        ("gh pr merge 44 --squash", "IDEAS.md"),
+    ],
+)
+def test_reminder_matches_moment(command: str, expected: str) -> None:
+    """Каждый момент получает своё напоминание, а не общее."""
+    result = run_hook(json.dumps({"tool_input": {"command": command}}))
+    assert expected in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_first_moment_wins_on_two_triggers_in_one_command() -> None:
+    """`git switch -c x && git commit` — оба триггера в одной строке.
+
+    Порядок шаблонов задан явно (от начала этапа к его закрытию), поэтому
+    выигрывает более ранний по смыслу момент — начало ветки, а не коммит.
+    """
+    command = "git switch -c x && git commit"
+    result = run_hook(json.dumps({"tool_input": {"command": command}}))
+    context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "brainstorming" in context
+    assert "verification-before-completion" not in context
