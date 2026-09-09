@@ -1,0 +1,42 @@
+# Хуки НЕ являются гейтом: --no-verify и LEFTHOOK=0 обходят их целиком.
+# Гейт — обязательный джоб checks в защите main. Здесь только скорость.
+#
+# Строки run: исполняет POSIX sh (Git Bash), а не PowerShell — обратно правилу
+# justfile. Никаких $env:VAR, Test-Path, -ErrorAction. Двойные кавычки не
+# ставить: строка уходит в `sh -c "..."` без экранирования, и путь с пробелом
+# молча обрежет команду при нулевом коде возврата. Шаблоны файлов не кавычить
+# вовсе — lefthook сам экранирует их одинарными.
+
+min_version: "2.1.12"
+
+# Команда запуска самого lefthook. Стоит в шаблоне хука выше пробы PATH и выше
+# абсолютного пути, запечённого при установке: переименование папки её не рвёт,
+# чужой lefthook из PATH не подменит, а --frozen не даёт переписать uv.lock
+# посреди коммита.
+#
+# Побочный эффект принят сознательно: эта ветка делает недостижимым
+# assert_lefthook_installed, поэтому его здесь нет. Роль «хуки на месте»
+# исполняет `just check-hooks` внутри `just all`.
+lefthook: uv run --frozen --no-sync lefthook
+
+pre-commit:
+  piped: true          # упал check — format не выполнится и в индекс не уедет
+  jobs:                # именно jobs, а не commands: в commands порядок — по имени
+    - name: ruff-check
+      glob: "*.py"     # без этого justfile и uv.lock уедут в ruff и уронят коммит
+      run: uv run --frozen --no-sync python -m ruff check --fix {staged_files}
+      stage_fixed: true
+    - name: ruff-format
+      glob: "*.py"
+      run: uv run --frozen --no-sync python -m ruff format {staged_files}
+      stage_fixed: true
+
+pre-push:
+  piped: true
+  jobs:                # через рецепты just — иначе список проверок разъедется
+    - name: lock       # между justfile, ci.yml и этим файлом
+      run: just locked
+    - name: types
+      run: just types  # разворачивается в mypy БЕЗ аргументов, и это важно:
+    - name: tests      # exclude у mypy не работает при файлах списком
+      run: just test
