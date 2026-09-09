@@ -79,6 +79,8 @@
 | Запасной декодер MP3 склеивает стереоканалы вместо микширования | `area:tts` `cost:S` | [#45](https://github.com/TheDragonBald/voxduo/issues/45) |
 | `just clean` удаляет `.mypy_cache`, следующая проверка типов дорожает вшестеро | `area:infra` `cost:S` | [#46](https://github.com/TheDragonBald/voxduo/issues/46) |
 | Нет тестов на `tts/player.py` и `logging_setup.py` | `area:infra` `cost:S` | [#47](https://github.com/TheDragonBald/voxduo/issues/47) |
+| Хук не распознаёт слитный короткий флаг и путь в кавычках | `area:infra` `cost:S` | [#48](https://github.com/TheDragonBald/voxduo/issues/48) |
+| Отдельное предупреждение для форм, перезаписывающих ветку (`-C`, `-B`) | `area:infra` `cost:S` | [#49](https://github.com/TheDragonBald/voxduo/issues/49) |
 
 ---
 
