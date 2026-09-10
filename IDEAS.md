@@ -81,6 +81,7 @@
 | Нет тестов на `tts/player.py` и `logging_setup.py` | `area:infra` `cost:S` | [#47](https://github.com/TheDragonBald/voxduo/issues/47) |
 | Хук не распознаёт слитный короткий флаг и путь в кавычках | `area:infra` `cost:S` | [#48](https://github.com/TheDragonBald/voxduo/issues/48) |
 | Отдельное предупреждение для форм, перезаписывающих ветку (`-C`, `-B`) | `area:infra` `cost:S` | [#49](https://github.com/TheDragonBald/voxduo/issues/49) |
+| Вернуть автопочинку в pre-commit, когда выйдет починка lefthook #1483 | `area:infra` `cost:S` | [#51](https://github.com/TheDragonBald/voxduo/issues/51) |
 
 ---
 

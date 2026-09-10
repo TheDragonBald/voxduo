@@ -421,6 +421,15 @@ wheels = [
 ]
 
 [[package]]
+name = "lefthook"
+version = "2.1.12"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/78/f0cd9f42f892986d1576ea5e0af59d5be8e0512e1bb1e185ea6ab86c07d0/lefthook-2.1.12-py3-none-win_amd64.whl", hash = "sha256:c8f155eadbe4922e6ea5e12245800dc0e2d3efc945945299961711d4398fd303", size = 5508588, upload-time = "2026-08-28T10:22:32.95Z" },
+    { url = "https://files.pythonhosted.org/packages/22/49/a0a6c09934947748cfc459f7370cf03fa5122ea87d8de0a9a1160210a6ca/lefthook-2.1.12-py3-none-win_arm64.whl", hash = "sha256:7ea0032c826c4e9ab6a9c1a82f675508078b0b469d269ed7b705d5aca8351a2f", size = 4860903, upload-time = "2026-08-28T10:22:34.155Z" },
+]
+
+[[package]]
 name = "librt"
 version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1039,6 +1048,7 @@ silero = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "lefthook" },
     { name = "mypy" },
     { name = "pyinstaller" },
     { name = "pytest" },
@@ -1075,6 +1085,7 @@ provides-extras = ["gpu", "silero"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "lefthook", specifier = "==2.1.12" },
     { name = "mypy", specifier = "==2.3.1" },
     { name = "pyinstaller", specifier = "==6.22.2" },
     { name = "pytest", specifier = "==9.1.1" },

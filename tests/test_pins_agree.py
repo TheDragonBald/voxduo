@@ -13,6 +13,11 @@
 `requires-python`, в `[tool.mypy].python_version` и в `[tool.ruff].target-version`.
 Разъехавшись, они дадут проверку кода под одну версию при запуске на другой.
 
+Третий дубль — версия lefthook: пин `lefthook==X.Y.Z` в dev-группе
+`pyproject.toml` и `min_version` в `lefthook.yml`. Разъехавшись, Dependabot
+поднимет пин зависимости, а `min_version` соврёт про то, какой lefthook
+на самом деле нужен.
+
 Тест краснеет в CI при первом же расхождении.
 """
 
@@ -28,14 +33,24 @@ ROOT = Path(__file__).resolve().parent.parent
 CANARY = ROOT / ".github" / "workflows" / "canary.yml"
 PYPROJECT = ROOT / "pyproject.toml"
 PYTHON_VERSION = ROOT / ".python-version"
+LEFTHOOK_YML = ROOT / "lefthook.yml"
 
 # Версия внутри --with "edge-tts==X.Y.Z"
 _CANARY_PIN = re.compile(r'--with\s+"edge-tts==([^"]+)"')
+
+# Версия внутри min_version: "X.Y.Z"
+_MIN_VERSION = re.compile(r'^min_version:\s*"([^"]+)"', re.MULTILINE)
 
 
 def canary_pin(text: str) -> str | None:
     """Версия edge-tts, которую ставит канарейка, или None."""
     match = _CANARY_PIN.search(text)
+    return match.group(1) if match else None
+
+
+def min_version_pin(text: str) -> str | None:
+    """Версия lefthook из min_version в lefthook.yml, или None."""
+    match = _MIN_VERSION.search(text)
     return match.group(1) if match else None
 
 
@@ -94,6 +109,34 @@ def test_canary_pin_parsing(text: str, expected: str | None) -> None:
 )
 def test_declared_pin_parsing(deps: list[str], name: str, expected: str | None) -> None:
     assert declared_pin(deps, name) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ('min_version: "2.1.12"', "2.1.12"),
+        ('min_version: "2.1.12"\npre-commit:\n  piped: true', "2.1.12"),
+        ("min_version: 2.1.12", None),  # без кавычек — не наш формат
+        ("ничего похожего", None),
+    ],
+)
+def test_min_version_pin_parsing(text: str, expected: str | None) -> None:
+    assert min_version_pin(text) == expected
+
+
+def test_lefthook_pin_agrees_with_min_version() -> None:
+    """Пин lefthook в pyproject.toml и min_version в lefthook.yml — одно и то же."""
+    config = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+    declared = declared_pin(config["dependency-groups"]["dev"], "lefthook")
+    assert declared is not None, "lefthook пропал из dev-группы зависимостей"
+
+    in_lefthook_yml = min_version_pin(LEFTHOOK_YML.read_text(encoding="utf-8"))
+    assert in_lefthook_yml is not None, "в lefthook.yml не нашлось min_version"
+
+    assert in_lefthook_yml == declared, (
+        f"lefthook.yml требует минимум {in_lefthook_yml}, а в pyproject.toml "
+        f"закреплён {declared}. Подняли пин в одном месте — поднимите и в другом"
+    )
 
 
 def test_python_version_agrees_everywhere() -> None:
