@@ -234,5 +234,7 @@ def test_installer_uv_floor_agrees_with_pyproject() -> None:
 
     assert in_installer == declared, (
         f"install.ps1 требует uv {in_installer}, а pyproject.toml — {declared}. "
-        f"Подняли границу в одном месте — поднимите и в другом"
+        f"Подняли границу в одном месте — поднимите и в другом. И проверьте, что "
+        f"она не выше uv, с которым приходит Dependabot: иначе автообновления "
+        f"Python-зависимостей молча прекратятся"
     )
