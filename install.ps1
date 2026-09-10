@@ -69,9 +69,16 @@ Write-Host "VoxDuo — установка" -ForegroundColor White
 Write-Host "Папка: $root"
 
 # --- uv ---
-# Нижняя граница та же, что в required-version у pyproject.toml. Ниже неё uv
+# Та же нижняя граница, что в `required-version` у pyproject.toml: ниже неё uv
 # честно откажется работать, поэтому проверяем ДО того, как звать его всерьёз.
-$minUv = [version]'0.12.10'
+#
+# Две версии живут по разным правилам, не перепутать. ЭТА — нижняя граница для
+# всех, кто запускает uv в проекте, включая Dependabot (он приходит со своим uv
+# 0.12.7, и граница выше молча убивает автообновления). А `version:` у setup-uv
+# в трёх workflow — точная версия, которой проверяется код, и она может быть
+# выше. Поднимать эту границу — только вместе с pyproject.toml; их сверяет
+# tests/test_pins_agree.py.
+$minUv = [version]'0.12.7'
 
 Write-Step "Проверяем uv"
 $uvVersion = Get-UvVersion
