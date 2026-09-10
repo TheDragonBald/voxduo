@@ -22,7 +22,19 @@ updates:
   # Экосистема именно `uv`, а не `pip`: её парсер читает `[project]
   # dependencies`, `[project.optional-dependencies]`, `[dependency-groups]` и
   # `[build-system].requires`, а обновляет через `uv lock --upgrade-package` —
-  # то есть и пины в `pyproject.toml`, и весь `uv.lock` целиком.
+  # то есть и пин в `pyproject.toml`, и `uv.lock`. Операция точечная: едет
+  # названный пакет и то, что вынуждено поехать за ним, а не весь лок.
+  #
+  # ЧЕГО ОНА НЕ УМЕЕТ, и это стоит знать про `torch`. Версию Dependabot ищет на
+  # PyPI: `[[tool.uv.index]]` и `[tool.uv.sources]` при ПОИСКЕ не читаются вовсе
+  # (в dependabot-core за индексы отвечает `pyproject_index_urls`, и смотрит он
+  # только секции Poetry). При установке индекс всё-таки применяется — файл
+  # уезжает к uv как есть, — так что PR будет корректным, пока версии на PyPI и
+  # на download.pytorch.org совпадают. А вот если разойдутся, `uv lock` не
+  # найдёт решения и PR просто не придёт: молча, как и с `required-version`.
+  # Это открытый баг upstream #14397. Сейчас расхождения нет (2.14.0 против
+  # 2.14.0+cpu), но при загадочном отсутствии обновлений `torch` смотреть надо
+  # сюда.
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
