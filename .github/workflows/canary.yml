@@ -1,13 +1,18 @@
 name: canary
 
-# Ранний детектор поломки edge-tts.
+# Две еженедельные канарейки — ранние сигналы о том, что изменилось снаружи.
 #
-# Microsoft периодически меняет требования к версии клиента, и edge-tts
-# начинает получать 403, пока не выйдет обновление пакета. Раз в неделю
-# синтезируем короткую фразу: если не вышло — заводится issue, и мы узнаём
-# об этом раньше, чем кто-то столкнётся при использовании.
+# check — поломка edge-tts. Microsoft периодически меняет требования к версии
+# клиента, и edge-tts начинает получать 403, пока не выйдет обновление пакета.
+# Раз в неделю синтезируем короткую фразу: если не вышло — заводится issue, и
+# мы узнаём об этом раньше, чем кто-то столкнётся при использовании.
 #
-# Проверка стоит секунды и не трогает ничего, кроме сети.
+# hub-major — пора ли снимать запрет мажора huggingface-hub (ignore в
+# .github/dependabot.yml): резолвер отвечает, можно ли взять hub 2 без отката
+# tokenizers. Ответ «пора» заводит issue. Подробности — у самого джоба.
+#
+# Обе проверки стоят секунды и зависят только от сети: edge-tts — от серверов
+# Microsoft, hub-major — от PyPI.
 
 on:
   schedule:
@@ -105,5 +110,80 @@ jobs:
                 '',
                 'Пользователей это не блокирует: синтез автоматически',
                 'переключается на Silero или Piper.',
+              ].join('\n'),
+            });
+
+  hub-major:
+    # Когда снимать запрет мажора huggingface-hub (ignore в dependabot.yml): раз в
+    # неделю спрашиваем резолвер, можно ли взять hub 2 без отката tokenizers.
+    # Ответ «пора» заводит issue; сломанная проверка краснеет, а не врёт issue-ом.
+    # Снимая запрет — удалить этот джоб с абзацем о нём в шапке, скрипт с тестами
+    # и пин packaging в pyproject.toml; порядок — в тексте issue ниже.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.10"
+          enable-cache: false
+
+      - name: Спросить резолвер про huggingface-hub 2
+        id: hub
+        timeout-minutes: 5
+        # packaging без пина, хотя в dev-группе pyproject.toml пакет закреплён: тот
+        # пин — для тестов и mypy, а сюда, в --no-project, он не доезжает. И не
+        # нужен: версия на ответ не влияет — скрипту нужны только разбор требований
+        # и сравнение версий. Поэтому и сверки пина, как у edge-tts выше, здесь нет.
+        run: uv run --no-project --with packaging scripts/check_hub_major.py
+
+      - name: Завести issue, если пора
+        if: ${{ steps.hub.outputs.ready == 'true' }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const title = 'Пора разрешить huggingface-hub 2';
+            // Метку dependencies носят и PR бота — читаем все страницы, а не первые 30.
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies',
+              per_page: 100,
+            });
+            if (existing.some(issue => issue.title === title)) {
+              core.info('Issue уже заведён, второй не нужен');
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['dependencies', 'area:infra'],
+              body: [
+                'Еженедельная проверка: с huggingface-hub 2 резолвер больше не откатывает',
+                'tokenizers — запрет на мажорные версии hub можно снимать.',
+                '',
+                `Журнал запуска: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                'Что сделать, по порядку:',
+                '',
+                '1. Удалить правило ignore для huggingface-hub в `.github/dependabot.yml`.',
+                '2. Удалить джоб `hub-major` из `.github/workflows/canary.yml` и абзац',
+                '   о нём в шапке файла — сторож в `tests/test_hub_major.py` требует',
+                '   убирать правило и джоб вместе. Затем удалить',
+                '   `scripts/check_hub_major.py` и сам `tests/test_hub_major.py`: без',
+                '   джоба это мёртвый код.',
+                '3. Убрать пин `packaging` из dev-группы `pyproject.toml`, если по имени',
+                '   его больше никто не импортирует, и выполнить `just lock`.',
+                '4. Дождаться PR Dependabot с hub 2 и проверить сборку: hub 2 ходит в',
+                '   сеть через httpx2 и системные сертификаты (truststore) — бандл',
+                '   PyInstaller должен их подхватить, а Piper — скачать голос.',
               ].join('\n'),
             });
