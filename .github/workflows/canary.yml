@@ -107,3 +107,69 @@ jobs:
                 'переключается на Silero или Piper.',
               ].join('\n'),
             });
+
+  hub-major:
+    # Когда снимать запрет мажора huggingface-hub (ignore в dependabot.yml): раз в
+    # неделю спрашиваем резолвер, можно ли взять hub 2 без отката tokenizers.
+    # Ответ «пора» заводит issue; сломанная проверка краснеет, а не врёт issue-ом.
+    # Снимая запрет — удалить и этот джоб, и скрипт с тестами.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.10"
+          enable-cache: false
+
+      - name: Спросить резолвер про huggingface-hub 2
+        id: hub
+        timeout-minutes: 5
+        # packaging без пина: версия на ответ не влияет, а скрипту нужны только
+        # разбор требований и сравнение версий.
+        run: uv run --no-project --with packaging scripts/check_hub_major.py
+
+      - name: Завести issue, если пора
+        if: ${{ steps.hub.outputs.ready == 'true' }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const title = 'Пора разрешить huggingface-hub 2';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'dependencies',
+            });
+            if (existing.data.some(issue => issue.title === title)) {
+              core.info('Issue уже заведён, второй не нужен');
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['dependencies', 'area:infra'],
+              body: [
+                'Еженедельная проверка: с huggingface-hub 2 резолвер больше не откатывает',
+                'tokenizers — запрет на мажорные версии hub можно снимать.',
+                '',
+                `Журнал запуска: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                'Что сделать, по порядку:',
+                '',
+                '1. Удалить правило ignore для huggingface-hub в `.github/dependabot.yml`.',
+                '2. Удалить джоб `hub-major` из `.github/workflows/canary.yml`,',
+                '   `scripts/check_hub_major.py` и `tests/test_hub_major.py` — сторож',
+                '   в тестах требует убрать их вместе с правилом.',
+                '3. Дождаться PR Dependabot с hub 2 и проверить сборку: hub 2 ходит в',
+                '   сеть через httpx2 и системные сертификаты (truststore) — бандл',
+                '   PyInstaller должен их подхватить, а Piper — скачать голос.',
+              ].join('\n'),
+            });
