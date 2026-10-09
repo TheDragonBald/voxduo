@@ -50,16 +50,16 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Порядок важен: setup-python раскладывает системный интерпретатор, а
       # python-preference = "system" в pyproject.toml велит uv взять именно его.
       # Собранный .exe должен делаться на том же CPython, на котором проверялся.
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
 
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: "0.12.10"
           enable-cache: true

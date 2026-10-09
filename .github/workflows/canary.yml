@@ -31,9 +31,9 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
 
@@ -44,7 +44,7 @@ jobs:
       #
       # Кеш выключен: ставится один пакет, и восстановление кеша обошлось бы
       # дороже самой установки.
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: "0.12.10"
           enable-cache: false
@@ -69,7 +69,7 @@ jobs:
 
       - name: Завести issue, если синтез сломался
         if: ${{ failure() || cancelled() }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = 'edge-tts перестал отвечать';

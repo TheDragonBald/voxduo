@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # setup-python идёт ПЕРЕД setup-uv осознанно: в pyproject.toml стоит
       # python-preference = "system", и uv должен найти уже разложенный здесь
@@ -47,13 +47,13 @@ jobs:
       #
       # Ключа cache: pip больше нет: requirements*.txt удалены, кешировать
       # нечего, а колёса теперь кеширует setup-uv по uv.lock.
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
 
       # Версия задана точно, а не плавающим тегом: у setup-uv мажорные теги
       # (v8, v9, v10) не публикуются — проверено, последний плавающий это v7.
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: "0.12.10"
           enable-cache: true
