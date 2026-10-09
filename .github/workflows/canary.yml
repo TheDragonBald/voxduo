@@ -117,7 +117,8 @@ jobs:
     # Когда снимать запрет мажора huggingface-hub (ignore в dependabot.yml): раз в
     # неделю спрашиваем резолвер, можно ли взять hub 2 без отката tokenizers.
     # Ответ «пора» заводит issue; сломанная проверка краснеет, а не врёт issue-ом.
-    # Снимая запрет — удалить и этот джоб, и скрипт с тестами.
+    # Снимая запрет — удалить этот джоб с абзацем о нём в шапке, скрипт с тестами
+    # и пин packaging в pyproject.toml; порядок — в тексте issue ниже.
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -136,8 +137,10 @@ jobs:
       - name: Спросить резолвер про huggingface-hub 2
         id: hub
         timeout-minutes: 5
-        # packaging без пина: версия на ответ не влияет, а скрипту нужны только
-        # разбор требований и сравнение версий.
+        # packaging без пина, хотя в dev-группе pyproject.toml пакет закреплён: тот
+        # пин — для тестов и mypy, а сюда, в --no-project, он не доезжает. И не
+        # нужен: версия на ответ не влияет — скрипту нужны только разбор требований
+        # и сравнение версий. Поэтому и сверки пина, как у edge-tts выше, здесь нет.
         run: uv run --no-project --with packaging scripts/check_hub_major.py
 
       - name: Завести issue, если пора
@@ -172,11 +175,14 @@ jobs:
                 'Что сделать, по порядку:',
                 '',
                 '1. Удалить правило ignore для huggingface-hub в `.github/dependabot.yml`.',
-                '2. Удалить джоб `hub-major` из `.github/workflows/canary.yml` — сторож',
-                '   в `tests/test_hub_major.py` требует убирать правило и джоб вместе.',
-                '   Затем удалить `scripts/check_hub_major.py` и сам',
-                '   `tests/test_hub_major.py`: без джоба это мёртвый код.',
-                '3. Дождаться PR Dependabot с hub 2 и проверить сборку: hub 2 ходит в',
+                '2. Удалить джоб `hub-major` из `.github/workflows/canary.yml` и абзац',
+                '   о нём в шапке файла — сторож в `tests/test_hub_major.py` требует',
+                '   убирать правило и джоб вместе. Затем удалить',
+                '   `scripts/check_hub_major.py` и сам `tests/test_hub_major.py`: без',
+                '   джоба это мёртвый код.',
+                '3. Убрать пин `packaging` из dev-группы `pyproject.toml`, если по имени',
+                '   его больше никто не импортирует, и выполнить `just lock`.',
+                '4. Дождаться PR Dependabot с hub 2 и проверить сборку: hub 2 ходит в',
                 '   сеть через httpx2 и системные сертификаты (truststore) — бандл',
                 '   PyInstaller должен их подхватить, а Piper — скачать голос.',
               ].join('\n'),
