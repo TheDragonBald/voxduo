@@ -941,7 +941,7 @@ wheels = [
 
 [[package]]
 name = "torch"
-version = "2.14.0+cpu"
+version = "2.14.1+cpu"
 source = { registry = "https://download.pytorch.org/whl/cpu" }
 dependencies = [
     { name = "filelock" },
@@ -953,8 +953,8 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.14.0%2Bcpu-cp313-cp313-win_amd64.whl", hash = "sha256:f2ffdacd95d7090a8bdfa8426f5d1557625874b19a96ba23a41f640d4a0c9c28", upload-time = "2026-09-02T18:32:10Z" },
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.14.0%2Bcpu-cp313-cp313-win_arm64.whl", hash = "sha256:4b1b78f8b9b1393576ef03cab0e6d941a6aa562b7539c45da12d80e86c09f9ed", upload-time = "2026-09-02T18:32:13Z" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp313-cp313-win_amd64.whl", hash = "sha256:4eec5a4fadd7a18f9c75b97fdb374fbb579ce4b1604bf66eeb14dc2201d54def", upload-time = "2026-09-30T19:48:22Z" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp313-cp313-win_arm64.whl", hash = "sha256:a46884e8b38cbdf5af8d4fdd39223a5fa97491419c3417c93f9b3e28749fa356", upload-time = "2026-09-30T19:48:27Z" },
 ]
 
 [[package]]
@@ -1077,7 +1077,7 @@ requires-dist = [
     { name = "pywebview", specifier = "==6.2.1" },
     { name = "sounddevice", specifier = "==0.5.6" },
     { name = "soundfile", specifier = "==0.14.0" },
-    { name = "torch", marker = "extra == 'silero'", specifier = "==2.14.0", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torch", marker = "extra == 'silero'", specifier = "==2.14.1", index = "https://download.pytorch.org/whl/cpu" },
     { name = "uvicorn", specifier = "==0.52.4" },
     { name = "websockets", specifier = "==17.1" },
 ]
