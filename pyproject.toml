@@ -68,7 +68,7 @@ dependencies = [
 # Пути к DLL регистрирует voxduo/cuda_setup.py до импорта faster_whisper.
 gpu = [
     "nvidia-cublas-cu12==12.9.2.10",
-    "nvidia-cudnn-cu12==9.25.1.1",
+    "nvidia-cudnn-cu12==9.27.0.42",
 ]
 
 # Третий движок TTS — Silero (~250 МБ).
