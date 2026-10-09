@@ -77,19 +77,21 @@ HOLD = (
     '      - dependency-name: "av"\n'
     '        update-types: ["version-update:semver-major"]\n'
 )
+# Любая версия, кроме HELD_FOR: случаи ниже не завязаны на номер и переживают его подъём.
+NEWER = f"{HELD_FOR}.post1"
 
 
 @pytest.mark.parametrize(
     ("pin", "dependabot", "outdated"),
     [
-        ("1.2.1", HOLD, False),  # запрет стоит по делу
-        ("1.3.0", HOLD, True),  # faster-whisper сдвинулся — пора пересмотреть
-        ("1.3.0", HOLD.replace('"av"', "av"), True),  # имя без кавычек — тот же запрет
-        ("1.3.0", "", False),  # запрет уже снят
-        ("1.3.0", HOLD.replace("- dependency-name", "# - dependency-name"), False),
-        ("1.3.0", HOLD.replace('"av"', '"avro"'), False),  # другое имя
+        (HELD_FOR, HOLD, False),  # запрет стоит по делу
+        (NEWER, HOLD, True),  # faster-whisper сдвинулся — пора пересмотреть
+        (NEWER, HOLD.replace('"av"', "av"), True),  # имя без кавычек — тот же запрет
+        (NEWER, "", False),  # запрет уже снят
+        (NEWER, HOLD.replace("- dependency-name", "# - dependency-name"), False),
+        (NEWER, HOLD.replace('"av"', '"avro"'), False),  # другое имя
     ],
-    ids=["held-for-1.2.1", "moved-on", "unquoted-name", "lifted", "commented-out", "other-name"],
+    ids=["pin-is-held-for", "moved-on", "unquoted-name", "lifted", "commented-out", "other-name"],
 )
 def test_av_hold_outdated(pin: str, dependabot: str, outdated: bool) -> None:
     pyproject = f'dependencies = [\n    "faster-whisper=={pin}",\n]\n'
@@ -102,16 +104,18 @@ def test_av_hold_outdated_without_pin_is_an_error() -> None:
 
 
 def test_av_hold_is_still_justified() -> None:
-    # Красный здесь — не поломка, а напоминание: бот принёс faster-whisper новее 1.2.1,
-    # а мажор av всё ещё придержан. Проверить, вошла ли в релиз починка
+    # Красный здесь — не поломка, а напоминание: бот принёс faster-whisper новее
+    # HELD_FOR, а мажор av всё ещё придержан. Проверить, вошла ли в релиз починка
     # SYSTRAN/faster-whisper#1495. Да — удалить запись av из ignore в
     # .github/dependabot.yml, комментарий о запрете у пина av в pyproject.toml и весь
-    # сторож срока в этом файле: HELD_FOR, _AV_IGNORE, _FASTER_WHISPER_PIN, HOLD,
-    # av_hold_outdated и три его теста; тесты декодирования остаются. Нет — поднять
-    # HELD_FOR до новой версии.
+    # сторож срока в этом файле: HELD_FOR, NEWER, HOLD, _AV_IGNORE, _FASTER_WHISPER_PIN,
+    # av_hold_outdated и три его теста, а с ними ставшие лишними ROOT и import re;
+    # докстринг модуля переписать под оставшиеся тесты декодирования. Нет — поднять
+    # HELD_FOR до новой версии и номер версии в комментариях о запрете
+    # (.github/dependabot.yml, pyproject.toml).
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
-    # Результат — в переменную: иначе на красном pytest напечатает оба файла целиком.
+    # Результат — в переменную: иначе на красном pytest напечатает куски обоих файлов.
     outdated = av_hold_outdated(pyproject, dependabot)
     assert not outdated, (
         "faster-whisper обновлён, а мажор av всё ещё придержан — пересмотреть запрет"
