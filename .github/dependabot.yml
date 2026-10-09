@@ -94,7 +94,8 @@ updates:
       # починил — SYSTRAN/faster-whisper#1495, — но не выпустил. Когда снимать,
       # подскажет tests/test_audio_decode.py: он краснеет, как только бот принесёт
       # faster-whisper новее 1.2.1, а сама связка проверяется там же, на первом
-      # PR бота с av 19 после снятия.
+      # PR бота с av 19 после снятия. Снимая запрет — убрать и комментарий у пина av
+      # в pyproject.toml, и сторож срока в тесте (HELD_FOR и его тесты).
       - dependency-name: "av"
         update-types: ["version-update:semver-major"]
 
