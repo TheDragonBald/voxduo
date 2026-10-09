@@ -76,7 +76,7 @@ gpu = [
 # torch нужен ИСКЛЮЧИТЕЛЬНО ради Silero и вынесен отдельно: кому хватает
 # edge-tts и Piper, четверти гигабайта качать не приходится.
 # CPU-сборки достаточно — модель лёгкая, см. [tool.uv.sources] ниже.
-silero = ["torch==2.14.0"]
+silero = ["torch==2.14.1"]
 
 [dependency-groups]
 dev = [
