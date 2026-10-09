@@ -82,6 +82,9 @@
 | Хук не распознаёт слитный короткий флаг и путь в кавычках | `area:infra` `cost:S` | [#48](https://github.com/TheDragonBald/voxduo/issues/48) |
 | Отдельное предупреждение для форм, перезаписывающих ветку (`-C`, `-B`) | `area:infra` `cost:S` | [#49](https://github.com/TheDragonBald/voxduo/issues/49) |
 | Вернуть автопочинку в pre-commit, когда выйдет починка lefthook #1483 | `area:infra` `cost:S` | [#51](https://github.com/TheDragonBald/voxduo/issues/51) |
+| Коммит ломается на именах `.py` с ведущим дефисом или апострофом | `area:infra` `cost:S` | [#53](https://github.com/TheDragonBald/voxduo/issues/53) |
+| `install-all` и `reset-env` оставляют окружение без git-хуков | `area:infra` `cost:S` | [#54](https://github.com/TheDragonBald/voxduo/issues/54) |
+| Шаг CI «Импорт всех модулей» не имеет локального аналога | `area:infra` `cost:S` | [#55](https://github.com/TheDragonBald/voxduo/issues/55) |
 
 ---
 

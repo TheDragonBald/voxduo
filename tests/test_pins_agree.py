@@ -18,6 +18,13 @@
 поднимет пин зависимости, а `min_version` соврёт про то, какой lefthook
 на самом деле нужен.
 
+Четвёртый дубль — нижняя граница версии uv: `required-version` в
+`[tool.uv]` и `$minUv` в `install.ps1`. Разъехавшись, они дадут установку,
+которая обрывается на окружении, объявленном достаточным: скрипт потребует
+версию выше и выйдет с кодом 1, хотя проект с ней работает. Граница вдобавок
+привязана к внешнему факту — Dependabot запускает свой uv, и поднимать её без
+проверки нельзя, — так что расходиться этим двоим особенно нежелательно.
+
 Тест краснеет в CI при первом же расхождении.
 """
 
@@ -34,12 +41,19 @@ CANARY = ROOT / ".github" / "workflows" / "canary.yml"
 PYPROJECT = ROOT / "pyproject.toml"
 PYTHON_VERSION = ROOT / ".python-version"
 LEFTHOOK_YML = ROOT / "lefthook.yml"
+INSTALL_PS1 = ROOT / "install.ps1"
 
 # Версия внутри --with "edge-tts==X.Y.Z"
 _CANARY_PIN = re.compile(r'--with\s+"edge-tts==([^"]+)"')
 
 # Версия внутри min_version: "X.Y.Z"
 _MIN_VERSION = re.compile(r'^min_version:\s*"([^"]+)"', re.MULTILINE)
+
+# Версия внутри $minUv = [version]'X.Y.Z'
+_MIN_UV = re.compile(r"\$minUv\s*=\s*\[version\]'([^']+)'")
+
+# Нижняя граница внутри required-version = ">=X.Y.Z"
+_REQUIRED_UV = re.compile(r'required-version\s*=\s*">=([^"]+)"')
 
 
 def canary_pin(text: str) -> str | None:
@@ -51,6 +65,18 @@ def canary_pin(text: str) -> str | None:
 def min_version_pin(text: str) -> str | None:
     """Версия lefthook из min_version в lefthook.yml, или None."""
     match = _MIN_VERSION.search(text)
+    return match.group(1) if match else None
+
+
+def min_uv_in_installer(text: str) -> str | None:
+    """Нижняя граница uv из install.ps1, или None."""
+    match = _MIN_UV.search(text)
+    return match.group(1) if match else None
+
+
+def required_uv(text: str) -> str | None:
+    """Нижняя граница uv из required-version в pyproject.toml, или None."""
+    match = _REQUIRED_UV.search(text)
     return match.group(1) if match else None
 
 
@@ -161,4 +187,54 @@ def test_python_version_agrees_everywhere() -> None:
     major, minor = declared.split(".")[:2]
     assert f">={major}.{minor}" in requires, (
         f"requires-python = {requires} не согласуется с .python-version = {declared}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("$minUv = [version]'0.12.7'", "0.12.7"),
+        ("$minUv  =  [version]'1.0.0'\nWrite-Host x", "1.0.0"),
+        ("$minUv = '0.12.7'", None),  # без [version] — не наш формат
+        ("ничего похожего", None),
+    ],
+)
+def test_min_uv_parsing(text: str, expected: str | None) -> None:
+    assert min_uv_in_installer(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ('required-version = ">=0.12.7"', "0.12.7"),
+        ('[tool.uv]\nrequired-version = ">=1.2.3"\npackage = false', "1.2.3"),
+        ('required-version = "==0.12.7"', None),  # не нижняя граница
+        ("ничего похожего", None),
+    ],
+)
+def test_required_uv_parsing(text: str, expected: str | None) -> None:
+    assert required_uv(text) == expected
+
+
+def test_installer_uv_floor_agrees_with_pyproject() -> None:
+    """Нижняя граница uv названа дважды — в pyproject.toml и в install.ps1.
+
+    Расхождение видно не сразу: `just all` и CI останутся зелёными, потому что
+    здешний uv свежее обеих границ. Сломается установка у человека с версией
+    между ними — скрипт объявит её недостаточной и выйдет с кодом 1, хотя
+    проект с ней работает.
+    """
+    declared = required_uv(PYPROJECT.read_text(encoding="utf-8"))
+    assert declared is not None, "в pyproject.toml не нашлось required-version с >="
+
+    # install.ps1 хранится в UTF-8 с BOM: Windows PowerShell 5.1 без BOM читает
+    # файл в ANSI и портит кириллицу.
+    in_installer = min_uv_in_installer(INSTALL_PS1.read_text(encoding="utf-8-sig"))
+    assert in_installer is not None, "в install.ps1 не нашлась переменная $minUv"
+
+    assert in_installer == declared, (
+        f"install.ps1 требует uv {in_installer}, а pyproject.toml — {declared}. "
+        f"Подняли границу в одном месте — поднимите и в другом. И проверьте, что "
+        f"она не выше uv, с которым приходит Dependabot: иначе автообновления "
+        f"Python-зависимостей молча прекратятся"
     )
