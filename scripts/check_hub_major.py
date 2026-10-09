@@ -68,11 +68,18 @@ def report(ready: bool, message: str) -> None:
     print(message)
     output = os.environ.get("GITHUB_OUTPUT")
     if output:
-        with open(output, "a", encoding="utf-8") as f:
+        # newline="\n": на Windows текстовый режим записал бы \r\n.
+        with open(output, "a", encoding="utf-8", newline="\n") as f:
             f.write(f"ready={'true' if ready else 'false'}\n")
 
 
 def main() -> int:
+    # Как в check_edge.py: ответ по-русски, а консоль Windows и чужая локаль UTF-8 могут не
+    # уметь — без этого журнал читается кракозябрами или падает на кодировке.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
     requirements = requirements_with_hub_2((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     locked = locked_version((ROOT / "uv.lock").read_text(encoding="utf-8"), WATCHED)
     python = (ROOT / ".python-version").read_text(encoding="utf-8").strip()
@@ -100,10 +107,12 @@ def main() -> int:
             check=False,
         )
     if result.returncode != 0:
+        # Текст резолвера — в журнал в обоих случаях: «No solution» бывает не только из-за
+        # hub 2, и без него задним числом не разобраться.
+        print(result.stderr, file=sys.stderr)
         if "No solution found" in result.stderr:
             report(False, "Ещё рано: с huggingface-hub 2 резолвер не находит решения.")
             return 0
-        print(result.stderr, file=sys.stderr)
         return 1
     resolved = resolved_version(result.stdout, WATCHED)
     if resolved is None:

@@ -85,6 +85,13 @@ dev = [
     "ruff==0.16.10",
     "pyinstaller==6.22.3",
     "mypy==2.4.0",
+    # Импортируется по имени: scripts/check_hub_major.py и tests/test_hub_major.py.
+    # Сама приезжает транзитивно — её тянут huggingface-hub, onnxruntime и
+    # customtkinter, то есть и в рабочее окружение, и в бандл, — но то, к чему
+    # обращаются по имени, пинится явно (как onnxruntime и certifi выше). Версия
+    # одна на весь лок, поэтому Dependabot кладёт её в группу runtime, а не
+    # dev-tools: её подъём может задеть и приложение.
+    "packaging==26.3",
     # Стабы вместо глушилки: у pyperclip они есть, и с ними вызовы
     # pyperclip.copy() в интерфейсе действительно проверяются, а не молчат.
     "types-pyperclip==1.11.0.20260508",

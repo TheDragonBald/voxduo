@@ -1050,6 +1050,7 @@ silero = [
 dev = [
     { name = "lefthook" },
     { name = "mypy" },
+    { name = "packaging" },
     { name = "pyinstaller" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1087,6 +1088,7 @@ provides-extras = ["gpu", "silero"]
 dev = [
     { name = "lefthook", specifier = "==2.1.17" },
     { name = "mypy", specifier = "==2.4.0" },
+    { name = "packaging", specifier = "==26.3" },
     { name = "pyinstaller", specifier = "==6.22.3" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-cov", specifier = "==7.1.0" },

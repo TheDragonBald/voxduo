@@ -1,13 +1,18 @@
 name: canary
 
-# Ранний детектор поломки edge-tts.
+# Две еженедельные канарейки — ранние сигналы о том, что изменилось снаружи.
 #
-# Microsoft периодически меняет требования к версии клиента, и edge-tts
-# начинает получать 403, пока не выйдет обновление пакета. Раз в неделю
-# синтезируем короткую фразу: если не вышло — заводится issue, и мы узнаём
-# об этом раньше, чем кто-то столкнётся при использовании.
+# check — поломка edge-tts. Microsoft периодически меняет требования к версии
+# клиента, и edge-tts начинает получать 403, пока не выйдет обновление пакета.
+# Раз в неделю синтезируем короткую фразу: если не вышло — заводится issue, и
+# мы узнаём об этом раньше, чем кто-то столкнётся при использовании.
 #
-# Проверка стоит секунды и не трогает ничего, кроме сети.
+# hub-major — пора ли снимать запрет мажора huggingface-hub (ignore в
+# .github/dependabot.yml): резолвер отвечает, можно ли взять hub 2 без отката
+# tokenizers. Ответ «пора» заводит issue. Подробности — у самого джоба.
+#
+# Обе проверки стоят секунды и зависят только от сети: edge-tts — от серверов
+# Microsoft, hub-major — от PyPI.
 
 on:
   schedule:
@@ -141,13 +146,15 @@ jobs:
         with:
           script: |
             const title = 'Пора разрешить huggingface-hub 2';
-            const existing = await github.rest.issues.listForRepo({
+            // Метку dependencies носят и PR бота — читаем все страницы, а не первые 30.
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
               labels: 'dependencies',
+              per_page: 100,
             });
-            if (existing.data.some(issue => issue.title === title)) {
+            if (existing.some(issue => issue.title === title)) {
               core.info('Issue уже заведён, второй не нужен');
               return;
             }
@@ -165,9 +172,10 @@ jobs:
                 'Что сделать, по порядку:',
                 '',
                 '1. Удалить правило ignore для huggingface-hub в `.github/dependabot.yml`.',
-                '2. Удалить джоб `hub-major` из `.github/workflows/canary.yml`,',
-                '   `scripts/check_hub_major.py` и `tests/test_hub_major.py` — сторож',
-                '   в тестах требует убрать их вместе с правилом.',
+                '2. Удалить джоб `hub-major` из `.github/workflows/canary.yml` — сторож',
+                '   в `tests/test_hub_major.py` требует убирать правило и джоб вместе.',
+                '   Затем удалить `scripts/check_hub_major.py` и сам',
+                '   `tests/test_hub_major.py`: без джоба это мёртвый код.',
                 '3. Дождаться PR Dependabot с hub 2 и проверить сборку: hub 2 ходит в',
                 '   сеть через httpx2 и системные сертификаты (truststore) — бандл',
                 '   PyInstaller должен их подхватить, а Piper — скачать голос.',
