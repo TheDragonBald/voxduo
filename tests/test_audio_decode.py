@@ -1,10 +1,10 @@
 """Сторож связки «faster-whisper + av»: декодирование файла и срок запрета av 19.
 
-PyAV 19 убрал аргумент metadata_errors у av.open, а faster-whisper 1.2.1 его
-передаёт: decode_audio падает с TypeError на любом файле (опыт 9 октября 2026,
+PyAV 19 убрал аргумент metadata_errors у av.open, а faster-whisper версии HELD_FOR
+его передаёт: decode_audio падает с TypeError на любом файле (опыт 9 октября 2026,
 PR #64). CI этого не видел: ни один тест не декодировал файл, а оба пакета
 импортируются лениво. Upstream починил (SYSTRAN/faster-whisper#1495), но в релиз
-1.2.1 починка не вошла, поэтому мажор av придержан в .github/dependabot.yml.
+HELD_FOR починка не вошла, поэтому мажор av придержан в .github/dependabot.yml.
 
 Модели и сеть не нужны: декодируется секунда синуса, записанная модулем wave.
 """
