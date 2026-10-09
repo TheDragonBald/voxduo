@@ -13,12 +13,12 @@ dependencies = [
     # cuda_setup.py вызывает ctranslate2.get_cuda_device_count() напрямую, до
     # импорта faster_whisper. Пин наш, хотя faster-whisper его и так требует.
     "ctranslate2==4.8.2",
-    "huggingface-hub==1.30.0",
+    "huggingface-hub==1.33.0",
     # Оба приезжают транзитивно, но voxduo.spec обращается к ним ПО ИМЕНИ:
     # copy_metadata("onnxruntime") и collect_data_files("certifi") падают с
     # PackageNotFoundError, если пакет уйдёт из дерева. Раз сборка на них
     # опирается — это часть контракта проекта, а не случайные попутчики.
-    "onnxruntime==1.29.0",
+    "onnxruntime==1.30.0",
     "certifi==2026.7.22",
 
     # --- Синтез речи (edge-tts онлайн, Piper офлайн) ---
@@ -32,7 +32,7 @@ dependencies = [
     # Декодер MP3 в tts/player.py: пакет импортируется там напрямую, плюс
     # приезжает транзитивно от faster-whisper (av>=11). Держим свой пин, чтобы
     # декодер не поехал сам собой вместе с обновлением распознавания.
-    "av==18.1.0",
+    "av==19.0.1",
 
     # --- Интерфейс на Tkinter, живёт до конца Ф7 ---
     "customtkinter==6.0.0",
@@ -52,12 +52,12 @@ dependencies = [
     # В voxduo.spec они при этом стоят в excludes, и это не противоречие:
     # бандл собирается из Tkinter-версии, которая их не трогает. Когда в Ф7
     # Tkinter уйдёт, строки из excludes уберутся вместе с ним.
-    "fastapi==0.141.1",
-    "uvicorn==0.52.4",
+    "fastapi==0.142.2",
+    "uvicorn==0.54.0",
     "pywebview==6.2.1",
     # У голого uvicorn его нет — только у uvicorn[standard]. Без явной строки
     # первый же точный `uv sync` снёс бы websockets и убил WebSocket из Ф0.
-    "websockets==17.1",
+    "websockets==17.2",
 ]
 
 [project.optional-dependencies]
