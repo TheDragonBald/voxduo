@@ -203,14 +203,14 @@ wheels = [
 
 [[package]]
 name = "ctranslate2"
-version = "4.8.2"
+version = "4.8.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "pyyaml" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/fc/a9e9e0ce1c0a29bc4c17bf56ccb4274293c0bbb2b8aae561727d82fcb0ca/ctranslate2-4.8.2-cp313-cp313-win_amd64.whl", hash = "sha256:399c20a7336b6358f69ce3c615e090eabc08f29735a079fd1ac1e464119e0861", size = 19222061, upload-time = "2026-08-31T19:37:43.754Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/d0/86d89881ffaa29ac54bb01a2da0b0680d39a9b737f5d0f799056ffc00bfe/ctranslate2-4.8.3-cp313-cp313-win_amd64.whl", hash = "sha256:c3c5d19b83df19f9f708ed16145fbc20b06827462f1a68c5286efc0ad41aa0c1", size = 19230496, upload-time = "2026-10-13T05:57:31.154Z" },
 ]
 
 [[package]]
@@ -1062,7 +1062,7 @@ dev = [
 requires-dist = [
     { name = "av", specifier = "==18.1.0" },
     { name = "certifi", specifier = "==2026.7.22" },
-    { name = "ctranslate2", specifier = "==4.8.2" },
+    { name = "ctranslate2", specifier = "==4.8.3" },
     { name = "customtkinter", specifier = "==6.0.0" },
     { name = "edge-tts", specifier = "==7.2.8" },
     { name = "fastapi", specifier = "==0.141.1" },
