@@ -12,7 +12,7 @@ dependencies = [
     "faster-whisper==1.2.1",
     # cuda_setup.py вызывает ctranslate2.get_cuda_device_count() напрямую, до
     # импорта faster_whisper. Пин наш, хотя faster-whisper его и так требует.
-    "ctranslate2==4.8.2",
+    "ctranslate2==4.8.4",
     "huggingface-hub==1.30.0",
     # Оба приезжают транзитивно, но voxduo.spec обращается к ним ПО ИМЕНИ:
     # copy_metadata("onnxruntime") и collect_data_files("certifi") падают с
